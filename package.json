@@ -1,0 +1,22 @@
+{
+  "name": "izertis-maestro-template",
+  "version": "0.1.0",
+  "description": "Izertis Maestro Template — E2E framework with Maestro and Gherkin",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "validate": "node maestro/scripts/validate.js",
+    "doctor": "node maestro/scripts/doctor.js"
+  },
+  "dependencies": {
+    "@cucumber/gherkin": "^27.0.0",
+    "@cucumber/messages": "^24.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@azure-devops/mcp": "^2.7.0",
+    "http-server": "^14.1.1"
+  }
+}

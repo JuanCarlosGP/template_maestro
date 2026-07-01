@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: DemoIosTabs
+---
+# Plantilla iOS: tab bar inferior
+- launchApp
+
+- tapOn: 'Inicio'
+- assertVisible: 'Inicio activo'
+- tapOn: 'Perfil'
+- assertVisible: 'Perfil activo'
+- tapOn: 'Ajustes'
+- assertVisible: 'Ajustes activo'

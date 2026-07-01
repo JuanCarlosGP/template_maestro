@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+name: DemoLogin
+---
+# Plantilla: entry flow → shared implementation
+- runFlow:
+    file: ../shared/DemoLogin.yml

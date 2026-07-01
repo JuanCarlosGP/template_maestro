@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+name: DemoOnboarding
+---
+# Plantilla Android: permisos y pantalla de bienvenida (selectores ficticios)
+- launchApp:
+    clearState: true
+    permissions:
+      all: unset
+
+- assertVisible: 'Bienvenido'
+- tapOn: 'Continuar'
+- assertVisible: "Allow ${APP_NAME} to send you notifications?"
+- tapOn: 'Allow'
+- assertVisible: 'Pantalla de bienvenida'

@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+name: DemoAndroidMenu
+---
+# Plantilla Android: menú lateral / navigation drawer
+- launchApp
+
+- tapOn:
+    id: 'navigation_drawer'
+- assertVisible: 'Inicio'
+- assertVisible: 'Ajustes'
+- assertVisible: 'Ayuda'

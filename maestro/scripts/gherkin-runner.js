@@ -1,0 +1,537 @@
+#!/usr/bin/env node
+
+'use strict'
+
+const path = require('path')
+const fs = require('fs')
+const { generateMessages } = require('@cucumber/gherkin')
+const { IdGenerator } = require('@cucumber/messages')
+const { resolveStep } = require('../step-definitions/index')
+const { publishResults: _publishResults, fetchSuiteTestCases } = require('./publish-results')
+const {
+  getMaestroBinary,
+  execMaestroSync,
+  appendMaestroEnvArgs,
+  buildMaestroTestArgs,
+  prepareMaestroAndroidBeforeCliRun,
+} = require('./resolve-maestro-bin')
+
+// ---------------------------------------------------------------------------
+// CLI args
+// ---------------------------------------------------------------------------
+
+function parseArgs(argv) {
+  const args = {}
+  for (let i = 2; i < argv.length; i++) {
+    if (argv[i] === '--feature') args.feature = argv[++i]
+    else if (argv[i] === '--feature-dir') args.featureDir = argv[++i]
+    else if (argv[i] === '--from-suite') args.fromSuite = true
+    else if (argv[i] === '--plan-id') args.planId = argv[++i]
+    else if (argv[i] === '--suite-id') args.suiteId = argv[++i]
+    else if (argv[i] === '--platform') args.platform = argv[++i]
+    else if (argv[i] === '--app-id') args.appId = argv[++i]
+    else if (argv[i] === '--android-app-id') args.androidAppId = argv[++i]
+    else if (argv[i] === '--ios-app-id') args.iosAppId = argv[++i]
+    else if (argv[i] === '--username') args.username = argv[++i]
+    else if (argv[i] === '--password') args.password = argv[++i]
+    else if (argv[i] === '--case-id') args.caseId = argv[++i]
+    else if (argv[i] === '--executor') args.executor = argv[++i]
+    else if (argv[i] === '--environment') args.environment = argv[++i]
+    else if (argv[i] === '--no-publish') args.noPublish = true
+  }
+  return args
+}
+
+const args = parseArgs(process.argv)
+
+if (!args.feature && !args.featureDir && !args.fromSuite) {
+  console.error('Error: --feature <path>, --feature-dir <dir>, or --from-suite is required')
+  process.exit(1)
+}
+if (args.feature && args.featureDir) {
+  console.error('Error: --feature and --feature-dir are mutually exclusive')
+  process.exit(1)
+}
+if (!args.platform) {
+  console.error('Error: --platform <android|ios|all> is required')
+  process.exit(1)
+}
+
+const VALID_EXECUTORS = ['local', 'browserstack']
+const executor = args.executor || 'local'
+if (!VALID_EXECUTORS.includes(executor)) {
+  console.error(`Error: unknown executor "${executor}". Valid values: ${VALID_EXECUTORS.join(', ')}`)
+  process.exit(1)
+}
+
+const VALID_ENVIRONMENTS = ['production', 'staging', 'mock']
+const environment = args.environment || 'staging'
+if (!VALID_ENVIRONMENTS.includes(environment)) {
+  console.error(`Error: unknown environment "${environment}". Valid values: ${VALID_ENVIRONMENTS.join(', ')}`)
+  process.exit(1)
+}
+
+const VALID_PLATFORMS = ['android', 'ios']
+
+function parsePlatforms(platformArg) {
+  if (platformArg === 'all') return ['android', 'ios']
+  const list = platformArg.split(',').map(p => p.trim())
+  const invalid = list.filter(p => !VALID_PLATFORMS.includes(p))
+  if (invalid.length) {
+    console.error(`Error: unknown platform(s): ${invalid.join(', ')}. Valid values: android, ios, all`)
+    process.exit(1)
+  }
+  return list
+}
+
+const platforms = parsePlatforms(args.platform)
+
+function getAppId(platform) {
+  if (args.appId) return args.appId
+  if (platform === 'android') return args.androidAppId || process.env.ANDROID_APP_ID || ''
+  return args.iosAppId || process.env.IOS_APP_ID || ''
+}
+
+function getAppName(platform) {
+  if (platform === 'android') return process.env.ANDROID_APP_NAME || process.env.APP_NAME || ''
+  return process.env.IOS_APP_NAME || process.env.APP_NAME || ''
+}
+
+function requireAppId(platform) {
+  const id = getAppId(platform)
+  if (!id) {
+    console.error(`Error: bundle ID is required for platform "${platform}". Pass --app-id <bundle-id> or set ${platform === 'android' ? 'ANDROID_APP_ID' : 'IOS_APP_ID'} in .env.`)
+    process.exit(1)
+  }
+  return id
+}
+
+function resolveFeaturePaths() {
+  if (args.featureDir) {
+    const dir = path.resolve(args.featureDir)
+    if (!fs.existsSync(dir)) {
+      console.error(`Error: Feature directory not found: ${dir}`)
+      process.exit(1)
+    }
+    return fs.readdirSync(dir)
+      .filter(f => f.endsWith('.feature'))
+      .sort()
+      .map(f => path.join(dir, f))
+  }
+  const p = path.resolve(args.feature)
+  if (!fs.existsSync(p)) {
+    console.error(`Error: Feature file not found: ${p}`)
+    process.exit(1)
+  }
+  return [p]
+}
+
+const featurePaths = args.fromSuite ? [] : resolveFeaturePaths()
+
+// ---------------------------------------------------------------------------
+// Gherkin parsing
+// ---------------------------------------------------------------------------
+
+function parseFeature(filePath) {
+  const source = fs.readFileSync(filePath, 'utf-8')
+  const newId = IdGenerator.uuid()
+  const messages = generateMessages(source, filePath, 'text/x.cucumber.gherkin+plain', {
+    newId,
+    includeGherkinDocument: true,
+    includePickles: false,
+  })
+
+  const parseError = messages.find(m => m.parseError)
+  if (parseError) throw new Error(`Parse error: ${parseError.parseError.message}`)
+
+  const docMessage = messages.find(m => m.gherkinDocument)
+  if (!docMessage) throw new Error(`No gherkin document found in: ${filePath}`)
+
+  return docMessage.gherkinDocument
+}
+
+// ---------------------------------------------------------------------------
+// Screenshot helper — finds most recent file under ~/.maestro/tests/
+// ---------------------------------------------------------------------------
+
+function findLatestScreenshot() {
+  const home = process.env.USERPROFILE || process.env.HOME
+  if (!home) return null
+  const maestroTestsDir = path.join(home, '.maestro', 'tests')
+  if (!fs.existsSync(maestroTestsDir)) return null
+
+  let latest = null
+  let latestMtime = 0
+
+  function walk(dir) {
+    let entries
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        walk(full)
+      } else if (entry.isFile() && /\.(png|jpg|jpeg)$/i.test(entry.name)) {
+        const { mtimeMs } = fs.statSync(full)
+        if (mtimeMs > latestMtime) {
+          latestMtime = mtimeMs
+          latest = full
+        }
+      }
+    }
+  }
+
+  walk(maestroTestsDir)
+  return latest
+}
+
+// ---------------------------------------------------------------------------
+// Maestro executor
+// ---------------------------------------------------------------------------
+
+/** Flows que usan ${APP_NAME} (p. ej. diálogos de permisos). El resto no lo necesita en CLI. */
+const FLOWS_USING_APP_NAME = new Set(['AcceptPermissions', 'Login', 'AppLanguage'])
+
+function filterEnvForFlow(flowName, env) {
+  if (FLOWS_USING_APP_NAME.has(flowName)) return env
+  const filtered = { ...env }
+  delete filtered.APP_NAME
+  return filtered
+}
+
+function resolveMaestroFlowPath(flowName) {
+  const flowsPath = path.resolve(path.join(__dirname, '..', 'flows', `${flowName}.yml`))
+  if (fs.existsSync(flowsPath)) return flowsPath
+  const sharedPath = path.resolve(path.join(__dirname, '..', 'shared', `${flowName}.yml`))
+  if (fs.existsSync(sharedPath)) return sharedPath
+  return flowsPath
+}
+
+function runMaestroFlow(flowName, env, platform) {
+  console.log(`  Running Maestro flow: ${flowName} with env ${JSON.stringify(env)}`)
+  const flowFile = resolveMaestroFlowPath(flowName)
+
+  if (!fs.existsSync(flowFile)) {
+    throw new Error(`Flow file not found: ${flowFile}`)
+  }
+
+  const { maestroArgs, cwd } = buildMaestroTestArgs(platform)
+  appendMaestroEnvArgs(maestroArgs, filterEnvForFlow(flowName, env))
+  maestroArgs.push(flowFile)
+  const maestroBin = getMaestroBinary()
+  console.log(`  Running: ${maestroBin} ${maestroArgs.join(' ')}`)
+  try {
+    execMaestroSync(maestroArgs, { cwd })
+  } catch (err) {
+    if (err && (err.code === 'ENOENT' || err.errno === -4058)) {
+      throw new Error(
+        `No se encuentra el ejecutable Maestro (${maestroBin}). ` +
+          'Instala Maestro, añádelo al PATH o define MAESTRO_CLI (p. ej. $HOME/.maestro/bin/maestro). ' +
+          'En Windows usa WSL; ver README.'
+      )
+    }
+    throw err
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Run a single feature file, return its results array
+// ---------------------------------------------------------------------------
+
+async function runFeature(featurePath, filterScenarioName, platform, appId, bsConfig) {
+  const doc = parseFeature(featurePath)
+  const feature = doc.feature
+
+  if (!feature) {
+    console.error(`No feature found in: ${featurePath}`)
+    return []
+  }
+
+  console.log(`\nFeature: ${feature.name}`)
+
+  /** @type {{ scenarioName: string, status: 'passed' | 'failed', error: string | null, screenshotPath: string | null, testCaseId?: string | number }[]} */
+  const results = []
+
+  for (const child of feature.children) {
+    const scenario = child.scenario
+    if (!scenario) continue
+    if (filterScenarioName && scenario.name !== filterScenarioName) continue
+
+    console.log(`\nScenario: ${scenario.name}`)
+
+    const flowsToRun = []
+    const seen = new Set()
+
+    for (const step of scenario.steps) {
+      const stepText = step.text
+      let resolved
+
+      try {
+        resolved = resolveStep(stepText)
+      } catch (err) {
+        console.error(`  Step error: ${err.message}`)
+        results.push({
+          scenarioName: scenario.name,
+          status: 'failed',
+          error: err.message,
+          screenshotPath: null,
+        })
+        continue
+      }
+
+      const { flow, params } = resolved
+      if (flow && !seen.has(flow)) {
+        seen.add(flow)
+        flowsToRun.push({ flow, params })
+      } else if (!flow) {
+        console.debug(`  [debug] Step skipped (flow: null): "${stepText}"`)
+      }
+    }
+
+    /** @type {'passed' | 'failed'} */
+    let scenarioStatus = 'passed'
+    let scenarioError = null
+    let screenshotPath = null
+
+    const appName = getAppName(platform)
+    const scenarioEnv = {
+      PLATFORM: platform,
+      ...(appId ? { APP_ID: appId } : {}),
+      ...(appName ? { APP_NAME: appName } : {}),
+      ...(args.username ? { USERNAME: args.username } : {}),
+      ...(args.password ? { PASSWORD: args.password } : {}),
+      ...(process.env.MOCK_SERVER_URL ? { MOCK_SERVER_URL: process.env.MOCK_SERVER_URL } : {}),
+    }
+
+    if (executor === 'browserstack') {
+      try {
+        const { runScenarioOnBrowserStack } = require('./browserstack-adapter')
+        const result = await runScenarioOnBrowserStack(flowsToRun, scenarioEnv, platform, bsConfig)
+        scenarioStatus = result.status
+        scenarioError = result.error
+        if (result.status === 'passed') {
+          console.log(`  Scenario "${scenario.name}" passed on BrowserStack`)
+        } else {
+          console.error(`  Scenario "${scenario.name}" failed on BrowserStack: ${result.error}`)
+        }
+      } catch (err) {
+        scenarioStatus = 'failed'
+        scenarioError = err.message
+        console.error(`  BrowserStack error for "${scenario.name}": ${err.message}`)
+      }
+    } else {
+      for (const { flow: flowName, params: flowParams } of flowsToRun) {
+        const env = { ...scenarioEnv, ...flowParams }
+
+        try {
+          runMaestroFlow(flowName, env, platform)
+          console.log(`  Flow "${flowName}" passed`)
+        } catch (err) {
+          scenarioStatus = 'failed'
+          scenarioError = err.message
+          screenshotPath = findLatestScreenshot()
+          console.error(`  Flow "${flowName}" failed: ${err.message}`)
+          break
+        }
+      }
+    }
+
+    results.push({
+      scenarioName: scenario.name,
+      status: scenarioStatus,
+      error: scenarioError,
+      screenshotPath,
+    })
+  }
+
+  return results
+}
+
+// ---------------------------------------------------------------------------
+// Build an index of all scenarios across all feature files
+// Returns: Map<scenarioName, featurePath>
+// ---------------------------------------------------------------------------
+
+function buildScenarioIndex(featuresDir) {
+  const dir = path.resolve(featuresDir)
+  const index = new Map()
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.feature'))
+  for (const file of files) {
+    const filePath = path.join(dir, file)
+    try {
+      const doc = parseFeature(filePath)
+      for (const child of (doc.feature || {}).children || []) {
+        if (child.scenario) index.set(child.scenario.name, filePath)
+      }
+    } catch {
+      // skip unparseable files
+    }
+  }
+  return index
+}
+
+// ---------------------------------------------------------------------------
+// Run all scenarios for one platform, return results
+// ---------------------------------------------------------------------------
+
+async function runPlatform(platform, planId, suiteId) {
+  const appId = requireAppId(platform)
+
+  if (platform === 'android' && executor === 'local') {
+    prepareMaestroAndroidBeforeCliRun()
+  }
+
+  console.log(`\n${'='.repeat(60)}`)
+  console.log(`  Platform    : ${platform}`)
+  console.log(`  Executor    : ${executor}`)
+  console.log(`  Environment : ${environment}`)
+  console.log(`  App ID      : ${appId || '(not set)'}`)
+
+  /** @type {{ scenarioName: string, status: 'passed' | 'failed', error: string | null, screenshotPath: string | null, testCaseId?: string | number }[]} */
+  const results = []
+
+  let bsConfig = null
+  if (executor === 'browserstack') {
+    const {
+      prepareBrowserStackRun,
+      getBrowserStackDevice,
+    } = require('./browserstack-adapter')
+
+    console.log(`\n  Preparing BrowserStack resources for ${platform} / ${environment}...`)
+    const { appUrl, suiteUrl, extraEnv, needsTunnel } = await prepareBrowserStackRun(platform, environment)
+    bsConfig = {
+      appUrl,
+      suiteUrl,
+      extraEnv,
+      device: getBrowserStackDevice(platform),
+      local: needsTunnel,
+      localIdentifier: process.env.BROWSERSTACK_LOCAL_IDENTIFIER || 'maestro-tunnel',
+    }
+    console.log(`  Device      : ${bsConfig.device}`)
+    console.log(`  Tunnel      : ${bsConfig.local}\n`)
+  }
+
+  if (args.fromSuite) {
+    console.log(`  Mode       : from-suite`)
+    console.log(`  Plan ID    : ${planId}`)
+    console.log(`  Suite ID   : ${suiteId}`)
+
+    const testCases = await fetchSuiteTestCases(planId, suiteId)
+    console.log(`  Test cases : ${testCases.length} found\n`)
+
+    const defaultFeaturesDir = path.join(__dirname, '..', 'features')
+    const scenarioIndex = buildScenarioIndex(args.featureDir || defaultFeaturesDir)
+
+    for (const tc of testCases) {
+      const featurePath = scenarioIndex.get(tc.name)
+      if (!featurePath) {
+        console.warn(`  [SKIP] No scenario found for test case: "${tc.name}"`)
+        results.push({ scenarioName: String(tc.name), status: /** @type {'failed'} */ ('failed'), error: 'No matching Gherkin scenario found', screenshotPath: null, testCaseId: tc.id })
+        continue
+      }
+      const tcResults = await runFeature(featurePath, tc.name, platform, appId, bsConfig)
+      for (const r of tcResults) r.testCaseId = tc.id
+      results.push(...tcResults)
+    }
+  } else {
+    if (args.featureDir) console.log(`  Feature dir: ${path.resolve(args.featureDir)}`)
+    else console.log(`  Feature    : ${path.resolve(args.feature)}`)
+
+    for (const featurePath of featurePaths) {
+      results.push(...await runFeature(featurePath, undefined, platform, appId, bsConfig))
+    }
+  }
+
+  return results
+}
+
+// ---------------------------------------------------------------------------
+// Main runner
+// ---------------------------------------------------------------------------
+
+async function run() {
+  const planId = args.planId || process.env.AZURE_TEST_PLAN_ID
+  const suiteId = args.suiteId || process.env.AZURE_TEST_SUITE_ID
+
+  console.log(`\nGherkin Runner`)
+  console.log(`  Executor    : ${executor}`)
+  console.log(`  Environment : ${environment}`)
+  console.log(`  Platforms   : ${platforms.join(', ')}`)
+
+  if (args.fromSuite) {
+    if (!planId) { console.error('Error: --plan-id or AZURE_TEST_PLAN_ID is required with --from-suite'); process.exit(1) }
+    if (!suiteId) { console.error('Error: --suite-id or AZURE_TEST_SUITE_ID is required with --from-suite'); process.exit(1) }
+  }
+
+  const pat = process.env.AZURE_DEVOPS_PAT
+  const publishResults = (!args.noPublish && pat && planId) ? _publishResults : undefined
+
+  if (!args.noPublish && !publishResults) {
+    const reason = !pat ? 'AZURE_DEVOPS_PAT is not set' : 'AZURE_TEST_PLAN_ID / --plan-id is not set'
+    console.warn(`Warning: ${reason} — results will NOT be published to Azure Test Plans.`)
+  }
+
+  const needsTunnel = executor === 'browserstack' && (environment === 'staging' || environment === 'mock')
+  if (needsTunnel) {
+    const { startLocalTunnel, getCredentials } = require('./browserstack-adapter')
+    startLocalTunnel(getCredentials())
+  }
+
+  /** @type {{ platform: string, results: Array }[]} */
+  const perPlatform = []
+
+  try {
+    for (const platform of platforms) {
+      const results = await runPlatform(platform, planId, suiteId)
+      perPlatform.push({ platform, results })
+
+      // Publish per platform immediately after each run
+      if (publishResults) {
+        try {
+          await publishResults(results, { planId, suiteId, caseId: args.caseId })
+        } catch (err) {
+          console.warn(`Warning: Failed to publish ${platform} results to Azure Test Plans: ${err.message}`)
+        }
+      }
+    }
+  } finally {
+    if (needsTunnel) {
+      const { stopLocalTunnel, getCredentials } = require('./browserstack-adapter')
+      stopLocalTunnel(getCredentials())
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Combined summary
+  // ---------------------------------------------------------------------------
+  console.log('\n' + '='.repeat(60))
+  console.log('--- Summary ---')
+  let totalFailed = 0
+  for (const { platform, results } of perPlatform) {
+    console.log(`\n[${platform.toUpperCase()}]`)
+    for (const r of results) {
+      const icon = r.status === 'passed' ? 'PASS' : 'FAIL'
+      if (r.status === 'failed') totalFailed++
+      console.log(`  [${icon}] ${r.scenarioName}`)
+      if (r.error) console.log(`         Error: ${r.error}`)
+      if (r.status === 'failed' && r.screenshotPath) {
+        console.log(`         Screenshot: ${r.screenshotPath}`)
+      }
+    }
+  }
+
+  if (!publishResults) {
+    const reason = args.noPublish ? '--no-publish flag set' : 'AZURE_DEVOPS_PAT and/or AZURE_TEST_PLAN_ID not set'
+    console.log(`\nNote: ${reason} — skipping Azure Test Plans publishing.`)
+  }
+
+  process.exit(totalFailed > 0 ? 1 : 0)
+}
+
+run().catch(err => {
+  console.error('Unexpected error:', err)
+  process.exit(1)
+})

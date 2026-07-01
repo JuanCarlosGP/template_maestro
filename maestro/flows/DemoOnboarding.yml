@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: DemoOnboarding
+---
+# Plantilla: dispatcher por plataforma (Android / iOS)
+- runFlow:
+    when:
+      platform: Android
+    file: ../android/DemoOnboarding.yml
+- runFlow:
+    when:
+      platform: iOS
+    file: ../ios/DemoOnboarding.yml

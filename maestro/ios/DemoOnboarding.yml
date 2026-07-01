@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+name: DemoOnboarding
+---
+# Plantilla iOS: permisos y pantalla de bienvenida (selectores ficticios)
+- launchApp:
+    clearState: true
+    permissions:
+      all: unset
+
+- assertVisible: 'Bienvenido'
+- tapOn: 'Continuar'
+- assertVisible: "${APP_NAME} Would Like to Send You Notifications"
+- tapOn: 'Allow'
+- assertVisible: 'Pantalla de bienvenida'

@@ -1,0 +1,17 @@
+appId: ${APP_ID}
+name: DemoLogin
+---
+# Plantilla: login compartido — selectores genéricos, sustituir por los de tu app
+- runFlow: ../flows/DemoOnboarding.yml
+
+- tapOn: 'Iniciar sesión'
+- tapOn: 'Usuario'
+- inputText: '${USERNAME}'
+- tapOn: 'Contraseña'
+- inputText: '${PASSWORD}'
+- tapOn: 'Entrar'
+
+- extendedWaitUntil:
+    visible: 'Área principal'
+    timeout: 30000
+- assertVisible: 'Área principal'

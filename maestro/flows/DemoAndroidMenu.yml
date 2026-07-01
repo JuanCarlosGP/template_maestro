@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+name: DemoAndroidMenu
+---
+# Plantilla: flow específico de Android
+- runFlow:
+    file: ../android/DemoAndroidMenu.yml
