@@ -33,12 +33,16 @@ Azure Test Plans ──► gherkin-runner.js ──► step-definitions/ ──�
 | `DemoAndroidMenu.feature` | Android-only flow |
 | `DemoIosTabs.feature` | iOS-only flow |
 
+Tras hacer fork, sustituye los demos por tests reales — ver [README](README.md#tras-crear-tu-proyecto).
+
 ## Conventions
 
 - **One JSON per feature area** in `step-definitions/` (e.g. `demo-login.json`).
   Add a new file for a new area — do not bloat existing ones.
-- **First match wins.** The runner takes the first matching step across the merged list,
-  loaded alphabetically by file then array order. Put the more specific pattern first.
+- **Longest matching pattern wins.** Among all step definitions that match a Gherkin step,
+  the runner picks the one with the longest `pattern`. Files load alphabetically, but array
+  order within a JSON is not the tie-breaker. Prefer longer, more specific patterns; avoid
+  near-duplicates (the Gherkin dictionary warns on ambiguity).
 - **Parameterised steps** use a regex `pattern` plus a `params` array; the captured groups
   are passed to the flow as `--env` vars (e.g. `USERNAME`, `PASSWORD`).
 - **Flow file shape:** `appId: ${APP_ID}` header, a `name:`, then `---`, then steps.
@@ -50,7 +54,8 @@ Azure Test Plans ──► gherkin-runner.js ──► step-definitions/ ──�
 ## Environment
 
 - Config lives in `.env` (copy from `.env.example`). Key vars: `AZURE_DEVOPS_PAT`,
-  `AZURE_DEVOPS_ORG`, `AZURE_DEVOPS_PROJECT`, `PLAN_ID`, `SUITE_ID`, `ANDROID_APP_ID`,
+  `AZURE_DEVOPS_ORG`, `AZURE_DEVOPS_PROJECT`, `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID`
+  (`PLAN_ID` / `SUITE_ID` legacy aliases), `ANDROID_APP_ID`,
   `IOS_APP_ID`, `ANDROID_APP_NAME`, `IOS_APP_NAME`, `PLATFORM`, `USERNAME`, `PASSWORD`.
 - **`APP_SOURCE_DIR`** — the local app checkout for selector discovery. Override in `.env`.
 

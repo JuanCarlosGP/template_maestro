@@ -47,11 +47,11 @@ For the scenario:
 1. Decide the **feature area** (e.g. `login`, `permissions`, `idioma`). Reuse an existing
    `.feature` file if the area exists; otherwise create `maestro/features/<Area>.feature`.
 2. For **each step**, check `step-definitions/*.json` for an existing matching pattern.
-   **Reuse it** — first-match-wins, so do not add near-duplicates. Only add a new entry
+   **Reuse it** — the longest matching pattern wins, so avoid near-duplicates. Only add a new entry
    (to the area's JSON, creating `step-definitions/<area>.json` if needed) for genuinely
    new steps. Preconditions/assertions handled inside another flow get `"flow": null`.
 3. Parameterised steps use a regex `pattern` + `params` array (captured groups become
-   `--env` vars). Put more specific patterns earlier.
+   `--env` vars). Prefer longer, more specific patterns to reduce ambiguity.
 
 ## Phase 3 — Build the flows (both platforms)
 

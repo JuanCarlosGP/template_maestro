@@ -46,7 +46,7 @@ Configure in `.env` only if the client uses them:
 
 | Integration | Variables | Script |
 |-------------|-----------|--------|
-| Azure Test Plans | `AZURE_DEVOPS_*`, `PLAN_ID`, `SUITE_ID` | `publish-results.js` (runner, unless `--no-publish`) |
+| Azure Test Plans | `AZURE_DEVOPS_*`, `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID` | `publish-results.js` (runner, unless `--no-publish`) |
 | BrowserStack | `BROWSERSTACK_*` | `gherkin-runner --executor browserstack` |
 | Maestro Cloud | (client-specific) | direct Maestro CLI |
 

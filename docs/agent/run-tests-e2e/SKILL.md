@@ -58,7 +58,7 @@ Pass `--no-publish` to keep results off Azure (default in demo npm scripts).
 
 ## Gotchas
 
-- **`npm run feature` needs `PLAN_ID` and `SUITE_ID`** from `.env` when publishing. For local runs use `--no-publish`.
+- **`npm run feature` needs `AZURE_TEST_PLAN_ID` and `AZURE_TEST_SUITE_ID`** from `.env` when publishing (`PLAN_ID` / `SUITE_ID` work as legacy aliases). For local runs use `--no-publish`.
 - **The Azure DevOps MCP uses browser auth, not the PAT in `.env`**. `AZURE_DEVOPS_PAT`
   in `.env` is only for `publish-results.js`. Don't confuse the two.
 - **`APP_SOURCE_DIR` warning is harmless** unless you're authoring a new test and need

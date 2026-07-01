@@ -9,7 +9,7 @@
   "scripts": {
     "validate": "node maestro/scripts/validate.js",
     "doctor": "node maestro/scripts/doctor.js",
-    "test": "node --test maestro/scripts/lib/gherkin.test.js maestro/scripts/lib/step-defs.test.js maestro/scripts/lib/write-reports.test.js",
+    "test": "node --test maestro/scripts/lib/azure-env.test.js maestro/scripts/lib/gherkin.test.js maestro/scripts/lib/step-defs.test.js maestro/scripts/lib/write-reports.test.js",
     "check": "node maestro/scripts/check.js",
     "gherkin-extract": "node maestro/scripts/gherkin-dictionary/extract.js",
     "feature": "node maestro/scripts/gherkin-runner.js",

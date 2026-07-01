@@ -116,6 +116,8 @@ npm run check      # gate headless (recomendado en CI)
 
 Plantilla: [`.env.example`](.env.example) — bloques **Core**, **Reporting**, **Azure (opcional)**, **BrowserStack (opcional)**.
 
+Para Azure Test Plans, usa `AZURE_TEST_PLAN_ID` y `AZURE_TEST_SUITE_ID`. El runner también acepta `PLAN_ID` y `SUITE_ID` como alias legacy.
+
 ---
 
 ## Escenarios demo incluidos
@@ -127,6 +129,21 @@ Plantilla: [`.env.example`](.env.example) — bloques **Core**, **Reporting**, *
 | `DemoAndroidMenu.feature` | Android | `flows/DemoAndroidMenu.yml` → `android/` |
 | `DemoIosTabs.feature` | iOS | `flows/DemoIosTabs.yml` → `ios/` |
 | `DemoGherkinStructures.feature` | Background + Outline | Pickles expandidos (3 ejecuciones) |
+
+---
+
+## Tras crear tu proyecto
+
+Al hacer fork de la template, sustituye los demos por tests de tu app:
+
+| Acción | Qué hacer |
+|--------|-----------|
+| **Sustituir** | `Demo*.feature`, `demo-*.json` en `step-definitions/`, flows `Demo*` en `flows/`, `shared/`, `android/` e `ios/` |
+| **Configurar** | `.env`: `ANDROID_APP_ID`, `IOS_APP_ID`, `APP_SOURCE_DIR`, credenciales; Azure opcional con `AZURE_TEST_PLAN_ID` / `AZURE_TEST_SUITE_ID` |
+| **Conservar** | Estructura de carpetas, `npm run check`, `npm run validate`, ejemplos CI headless en `integrations/` |
+| **Opcional** | Publicación Azure, BrowserStack, `docs/agent/`, `.openspec/`, `contrib/ide/` |
+
+Para el primer escenario real, sigue [Añadir un test real](#añadir-un-test-real).
 
 ---
 
@@ -152,10 +169,10 @@ Pasa `--no-publish` al runner para no publicar en Azure (valor por defecto en lo
 Suite completa desde Azure Test Plans:
 
 ```bash
-node maestro/scripts/gherkin-runner.js --from-suite --plan-id $PLAN_ID --suite-id $SUITE_ID --platform all --no-publish
+node maestro/scripts/gherkin-runner.js --from-suite --platform all --no-publish
 ```
 
-(`PLAN_ID` y `SUITE_ID` en `.env`.)
+(`AZURE_TEST_PLAN_ID` y `AZURE_TEST_SUITE_ID` en `.env`, o `--plan-id` / `--suite-id` en CLI.)
 
 ---
 

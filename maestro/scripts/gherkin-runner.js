@@ -7,6 +7,7 @@ const fs = require('fs')
 const { resolveStep } = require('../step-definitions/index')
 const { getPickles, getPickleStepTexts, buildFlowsFromSteps, pickleLabel } = require('./lib/gherkin')
 const { buildRunSummary, writeReports } = require('./lib/write-reports')
+const { resolveAzurePlanId, resolveAzureSuiteId } = require('./lib/azure-env')
 const { publishResults: _publishResults, fetchSuiteTestCases } = require('./publish-results')
 const {
   getMaestroBinary,
@@ -462,8 +463,8 @@ async function runPlatform(platform, planId, suiteId) {
 
 async function run() {
   const startedAt = new Date().toISOString()
-  const planId = args.planId || process.env.AZURE_TEST_PLAN_ID
-  const suiteId = args.suiteId || process.env.AZURE_TEST_SUITE_ID
+  const planId = resolveAzurePlanId(args)
+  const suiteId = resolveAzureSuiteId(args)
 
   console.log(`\nGherkin Runner`)
   console.log(`  Executor    : ${executor}`)
@@ -471,15 +472,15 @@ async function run() {
   console.log(`  Platforms   : ${platforms.join(', ')}`)
 
   if (args.fromSuite) {
-    if (!planId) { console.error('Error: --plan-id or AZURE_TEST_PLAN_ID is required with --from-suite'); process.exit(1) }
-    if (!suiteId) { console.error('Error: --suite-id or AZURE_TEST_SUITE_ID is required with --from-suite'); process.exit(1) }
+    if (!planId) { console.error('Error: --plan-id, AZURE_TEST_PLAN_ID or PLAN_ID is required with --from-suite'); process.exit(1) }
+    if (!suiteId) { console.error('Error: --suite-id, AZURE_TEST_SUITE_ID or SUITE_ID is required with --from-suite'); process.exit(1) }
   }
 
   const pat = process.env.AZURE_DEVOPS_PAT
   const publishResults = (!args.noPublish && pat && planId) ? _publishResults : undefined
 
   if (!args.noPublish && !publishResults) {
-    const reason = !pat ? 'AZURE_DEVOPS_PAT is not set' : 'AZURE_TEST_PLAN_ID / --plan-id is not set'
+    const reason = !pat ? 'AZURE_DEVOPS_PAT is not set' : 'AZURE_TEST_PLAN_ID (or PLAN_ID) / --plan-id is not set'
     console.warn(`Warning: ${reason} — results will NOT be published to Azure Test Plans.`)
   }
 
@@ -533,7 +534,7 @@ async function run() {
   }
 
   if (!publishResults) {
-    const reason = args.noPublish ? '--no-publish flag set' : 'AZURE_DEVOPS_PAT and/or AZURE_TEST_PLAN_ID not set'
+    const reason = args.noPublish ? '--no-publish flag set' : 'AZURE_DEVOPS_PAT and/or AZURE_TEST_PLAN_ID (or PLAN_ID) not set'
     console.log(`\nNote: ${reason} — skipping Azure Test Plans publishing.`)
   }
 

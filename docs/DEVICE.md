@@ -26,13 +26,11 @@ npm run gherkin-report
 ```bash
 node maestro/scripts/gherkin-runner.js \
   --from-suite \
-  --plan-id $PLAN_ID \
-  --suite-id $SUITE_ID \
   --platform all \
   --no-publish
 ```
 
-Set `PLAN_ID`, `SUITE_ID`, credentials in `.env`. Omit `--no-publish` to publish results.
+Set `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID`, credentials in `.env`. Omit `--no-publish` to publish results.
 
 ## Android emulator
 

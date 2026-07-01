@@ -201,13 +201,15 @@ async function completeTestRun(runId) {
  * @param {Array<{ scenarioName: string, status: 'passed'|'failed', error: string|null, screenshotPath: string|null, testCaseId?: string|number }>} results
  * @param {{ planId?: string, suiteId?: string, caseId?: string }} [opts]
  */
+const { resolveAzurePlanId, resolveAzureSuiteId } = require('./lib/azure-env')
+
 async function publishResults(results, opts = {}) {
-  const planId = opts.planId || process.env.AZURE_TEST_PLAN_ID
-  const suiteId = opts.suiteId || process.env.AZURE_TEST_SUITE_ID
+  const planId = resolveAzurePlanId(opts)
+  const suiteId = resolveAzureSuiteId(opts)
   const defaultCaseId = opts.caseId || process.env.AZURE_TEST_CASE_ID
 
-  if (!planId) throw new Error('Missing AZURE_TEST_PLAN_ID')
-  if (!suiteId) throw new Error('Missing AZURE_TEST_SUITE_ID')
+  if (!planId) throw new Error('Missing AZURE_TEST_PLAN_ID (or PLAN_ID)')
+  if (!suiteId) throw new Error('Missing AZURE_TEST_SUITE_ID (or SUITE_ID)')
 
   // Group results by testCaseId
   const grouped = {}
