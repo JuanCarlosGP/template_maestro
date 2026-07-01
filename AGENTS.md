@@ -1,8 +1,10 @@
-# Izertis Maestro Template — Claude Code rules
+# Izertis Maestro Template — agent rules
 
 E2E test **framework template** by **Izertis**, driven by **Maestro** and **Gherkin**. Uses fictional demo scenarios to illustrate the structure — replace them with real tests for your app.
 
 Harness prose is in English; **generated test output (Gherkin scenarios, branch slugs) stays in Spanish** to match team conventions.
+
+Optional AI playbooks live in [`docs/agent/`](docs/agent/README.md). They are not required to run tests.
 
 ## Architecture
 
@@ -55,19 +57,19 @@ Azure Test Plans ──► gherkin-runner.js ──► step-definitions/ ──�
 ## Running tests
 
 ```bash
-make feature FEATURE=maestro/features/DemoLogin.feature PLATFORM=ios
-make flow-ios     FLOW=maestro/flows/DemoLogin.yml      # direct flow, no runner
-make flow-android FLOW=maestro/flows/DemoLogin.yml
-make validate                                        # static check, no device needed
-make doctor                                          # preflight: deps, Maestro, devices, PAT
-make gherkin-report                                  # Gherkin dictionary UI
+npm run setup                                              # bootstrap (env + deps + Maestro + doctor)
+npm run check                                              # headless CI gate
+npm run validate                                           # static check, no device needed
+npm run doctor                                             # preflight: deps, Maestro, devices, PAT
+npm run feature -- --feature maestro/features/DemoLogin.feature --platform ios --no-publish
+npm run flow:ios -- --flow maestro/flows/DemoLogin.yml     # direct flow, no runner
+npm run flow:android -- --flow maestro/flows/DemoLogin.yml
+npm run gherkin-report                                     # Gherkin dictionary UI
 ```
 
-`make setup` bootstraps a fresh machine (env + Node deps + Maestro CLI + preflight).
-
-`NO_PUBLISH=1` (the default in the Makefile) keeps results from hitting Azure.
+`NO_PUBLISH`: pass `--no-publish` to the runner to keep results off Azure.
 
 ## Guardrails
 
-- Always run `node maestro/scripts/validate.js` after editing features/step-defs/flows.
-- Always run `make gherkin-extract` after changing Gherkin or step definitions.
+- Always run `npm run validate` after editing features/step-defs/flows.
+- Always run `npm run gherkin-extract` after changing Gherkin or step definitions.

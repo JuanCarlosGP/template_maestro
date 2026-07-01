@@ -2,9 +2,9 @@
 
 'use strict'
 
-// PostToolUse hook. When Claude edits a .feature, a step-definitions/*.json, or a Maestro
-// flow .yml, run the static validator. On failure, exit 2 so the error is fed back to
-// Claude. Non-relevant edits and a clean validation exit 0 silently.
+// PostToolUse hook. When an agent edits a .feature, step-definitions/*.json, or Maestro
+// flow .yml, run the static validator. On failure, exit 2 so the error is fed back.
+// Non-relevant edits and a clean validation exit 0 silently.
 
 const { execFileSync } = require('child_process')
 const path = require('path')
@@ -26,7 +26,7 @@ process.stdin.on('end', () => {
 
   if (!relevant) process.exit(0)
 
-  const validator = path.join(__dirname, '..', '..', 'maestro', 'scripts', 'validate.js')
+  const validator = path.join(__dirname, '..', 'validate.js')
   try {
     execFileSync('node', [validator], { stdio: 'pipe' })
     process.exit(0)

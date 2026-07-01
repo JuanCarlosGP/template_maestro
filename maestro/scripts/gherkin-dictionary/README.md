@@ -49,16 +49,9 @@ gherkin-dictionary/
 Desde la raíz del repo (`izertis-maestro-template`):
 
 ```bash
-make gherkin-report     # extrae y abre la UI en el navegador
-make gherkin-report PORT=3000
-make gherkin-extract    # solo regenera JSON/CSV
-```
-
-Equivalente directo:
-
-```bash
-node maestro/scripts/gherkin-dictionary/extract.js
-./node_modules/.bin/http-server ./maestro/scripts/gherkin-dictionary/reports -c-1 -a localhost -o index.html
+npm run gherkin-report              # extrae y abre la UI en el navegador
+npm run gherkin-report -- --port 3000
+npm run gherkin-extract             # solo regenera JSON/CSV
 ```
 
 Requisito: **Node.js ≥ 20**.
@@ -89,7 +82,7 @@ Vistas disponibles:
 
 Incluye búsqueda, filtros por tipo (Given/When/Then…), **Constructor Gherkin** (montar escenarios y copiar) y escenarios guardados en `localStorage` del navegador.
 
-> Ejecuta `make gherkin-extract` (o `make gherkin-report`) antes de abrir la UI si acabas de cambiar features o step-definitions.
+> Ejecuta `npm run gherkin-extract` (o `npm run gherkin-report`) antes de abrir la UI si acabas de cambiar features o step-definitions.
 
 ## Relación con el runner
 
@@ -107,8 +100,8 @@ El diccionario reutiliza la misma lógica de matching que el runner (`resolveSte
 
 1. Añade o edita pasos en `maestro/features/*.feature`.
 2. Si el paso es nuevo, crea o actualiza el JSON en `maestro/step-definitions/`.
-3. Ejecuta `make gherkin-extract` y comprueba que no haya warnings.
-4. Revisa la UI con `make gherkin-report`.
+3. Ejecuta `npm run gherkin-extract` y comprueba que no haya warnings.
+4. Revisa la UI con `npm run gherkin-report`.
 
 Al añadir una feature nueva, basta con crear `step-definitions/<feature>.json`; `index.js` lo carga automáticamente.
 

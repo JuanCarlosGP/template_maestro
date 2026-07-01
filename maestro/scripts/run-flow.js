@@ -3,7 +3,7 @@
 'use strict'
 
 /**
- * Cross-platform wrapper for direct Maestro flow runs (npm alternative to make flow-android/ios).
+ * Cross-platform wrapper for direct Maestro flow runs (`npm run flow:android|flow:ios`).
  */
 const path = require('path')
 const {
@@ -69,7 +69,7 @@ try {
   execMaestroSync(maestroArgs, { cwd })
 } catch (err) {
   if (err && (err.code === 'ENOENT' || err.errno === -4058)) {
-    console.error('Maestro CLI not found. Run make install-maestro or set MAESTRO_CLI in .env')
+    console.error('Maestro CLI not found. Run npm run setup or set MAESTRO_CLI in .env (https://docs.maestro.dev/getting-started/installing-maestro)')
   }
   process.exit(err.status || 1)
 }

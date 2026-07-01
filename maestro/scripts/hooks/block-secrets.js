@@ -3,8 +3,7 @@
 'use strict'
 
 // PreToolUse hook for Edit|Write. Blocks writing real credentials into tracked files.
-// Secrets belong only in .env / .env.local (gitignored). Exit 2 blocks the write and
-// feeds the reason back to Claude.
+// Secrets belong only in .env / .env.local (gitignored). Exit 2 blocks the write.
 
 let raw = ''
 process.stdin.on('data', c => { raw += c })
@@ -19,15 +18,12 @@ process.stdin.on('end', () => {
   const ti = input.tool_input || {}
   const filePath = ti.file_path || ''
 
-  // Allowed homes for secrets.
   if (/(^|\/)\.env(\.|$)/.test(filePath) || /(^|\/)\.env\.local$/.test(filePath)) process.exit(0)
-  // Templates legitimately show empty keys.
   if (/\.env\.example$/.test(filePath) || /\.env\.template$/.test(filePath)) process.exit(0)
 
   const content = [ti.content, ti.new_string].filter(Boolean).join('\n')
   if (!content) process.exit(0)
 
-  // Patterns: a secret-looking key assigned a non-empty, non-placeholder value.
   const patterns = [
     /AZURE_DEVOPS_PAT\s*[:=]\s*['"]?[A-Za-z0-9]{20,}/,
     /\b(PASSWORD|PASSWD|PWD)\s*[:=]\s*['"]?(?!\s*$)(?!\$\{)(?!<)[^\s'"]{3,}/i,
