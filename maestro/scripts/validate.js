@@ -6,21 +6,20 @@
 // Static validator for the Gherkin -> step-definitions -> flows chain.
 //
 // Checks, without touching a device:
+//   0. Every step-definitions/*.json matches schema (pattern, flow, params, regex).
 //   1. Every .feature file parses as valid Gherkin.
-//   2. Every step in every scenario and Background (including those nested
-//      inside a Rule) resolves to a step definition.
+//   2. Every step in every executable pickle resolves to a step definition.
 //   3. Every non-null flow referenced by a step has a flows/<name>.yml file.
 //   4. Every Maestro flow file has a valid frontmatter block (header + `---`).
 //
 // Exit code 0 = all good, 1 = at least one problem found.
-// Used both by the `validate-edit` hook and the /author-e2e-test skill.
 // ---------------------------------------------------------------------------
 
 const fs = require('fs')
 const path = require('path')
-const { generateMessages } = require('@cucumber/gherkin')
-const { IdGenerator } = require('@cucumber/messages')
 const { resolveStep } = require('../step-definitions/index')
+const { getPickles, getPickleStepTexts, pickleLabel } = require('./lib/gherkin')
+const { validateAllStepDefinitions } = require('./validate-step-defs')
 
 const MAESTRO_DIR = path.join(__dirname, '..')
 const FEATURES_DIR = path.join(MAESTRO_DIR, 'features')
@@ -29,73 +28,54 @@ const FLOW_DIRS = ['flows', 'shared', 'ios', 'android'].map(d => path.join(MAEST
 
 const problems = []
 
-function parseFeature(filePath) {
-  const source = fs.readFileSync(filePath, 'utf-8')
-  const messages = generateMessages(source, filePath, 'text/x.cucumber.gherkin+plain', {
-    newId: IdGenerator.uuid(),
-    includeGherkinDocument: true,
-    includePickles: false,
-  })
-  const parseError = messages.find(m => m.parseError)
-  if (parseError) throw new Error(parseError.parseError.message)
-  const docMessage = messages.find(m => m.gherkinDocument)
-  if (!docMessage) throw new Error('No gherkin document found')
-  return docMessage.gherkinDocument
-}
-
-// Collect every step-bearing node in a feature: top-level scenarios and
-// backgrounds, plus scenarios/backgrounds nested inside a Rule. Without this a
-// Background or a Rule's steps would never reach resolveStep and validate would
-// pass green without covering them.
-function collectStepGroups(feature) {
-  const groups = []
-  const pushChild = (child, prefix) => {
-    if (child.background) {
-      groups.push({ label: `${prefix}Background`, steps: child.background.steps || [] })
-    } else if (child.scenario) {
-      groups.push({ label: `${prefix}"${child.scenario.name}"`, steps: child.scenario.steps || [] })
-    } else if (child.rule) {
-      for (const ruleChild of child.rule.children || []) {
-        pushChild(ruleChild, `Rule "${child.rule.name}" › `)
-      }
-    }
+function countPickleNames(pickles) {
+  const counts = new Map()
+  for (const pickle of pickles) {
+    counts.set(pickle.name, (counts.get(pickle.name) || 0) + 1)
   }
-  for (const child of feature.children || []) pushChild(child, '')
-  return groups
+  return counts
 }
 
-// 1 + 2 + 3 — features parse, steps resolve, referenced flows exist
+// 1 + 2 + 3 — features parse, pickle steps resolve, referenced flows exist
 function validateFeatures() {
   if (!fs.existsSync(FEATURES_DIR)) return
   const files = fs.readdirSync(FEATURES_DIR).filter(f => f.endsWith('.feature')).sort()
 
   for (const file of files) {
     const filePath = path.join(FEATURES_DIR, file)
-    let doc
+    let pickles
     try {
-      doc = parseFeature(filePath)
+      pickles = getPickles(filePath)
     } catch (err) {
       problems.push(`${file}: Gherkin parse error — ${err.message}`)
       continue
     }
-    const feature = doc.feature
-    if (!feature) {
-      problems.push(`${file}: no Feature found`)
+
+    if (pickles.length === 0) {
+      problems.push(`${file}: no executable scenarios (pickles) found`)
       continue
     }
-    for (const group of collectStepGroups(feature)) {
-      for (const step of group.steps) {
+
+    const nameCounts = countPickleNames(pickles)
+    const nameIndex = new Map()
+
+    for (const pickle of pickles) {
+      const idx = nameIndex.get(pickle.name) || 0
+      nameIndex.set(pickle.name, idx + 1)
+      const label = pickleLabel(pickle, idx, nameCounts.get(pickle.name))
+
+      for (const stepText of getPickleStepTexts(pickle)) {
         let resolved
         try {
-          resolved = resolveStep(step.text)
+          resolved = resolveStep(stepText)
         } catch (err) {
-          problems.push(`${file} › ${group.label}: ${err.message}`)
+          problems.push(`${file} › ${label}: ${err.message}`)
           continue
         }
         if (resolved.flow) {
           const flowFile = path.join(FLOWS_DIR, `${resolved.flow}.yml`)
           if (!fs.existsSync(flowFile)) {
-            problems.push(`${file} › ${group.label}: step "${step.text}" maps to flow "${resolved.flow}" but flows/${resolved.flow}.yml does not exist`)
+            problems.push(`${file} › ${label}: step "${stepText}" maps to flow "${resolved.flow}" but flows/${resolved.flow}.yml does not exist`)
           }
         }
       }
@@ -119,6 +99,7 @@ function validateFlowFrontmatter() {
 }
 
 function main() {
+  problems.push(...validateAllStepDefinitions({ collectOnly: true }))
   validateFeatures()
   validateFlowFrontmatter()
 

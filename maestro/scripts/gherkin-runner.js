@@ -4,9 +4,9 @@
 
 const path = require('path')
 const fs = require('fs')
-const { generateMessages } = require('@cucumber/gherkin')
-const { IdGenerator } = require('@cucumber/messages')
 const { resolveStep } = require('../step-definitions/index')
+const { getPickles, getPickleStepTexts, buildFlowsFromSteps, pickleLabel } = require('./lib/gherkin')
+const { buildRunSummary, writeReports } = require('./lib/write-reports')
 const { publishResults: _publishResults, fetchSuiteTestCases } = require('./publish-results')
 const {
   getMaestroBinary,
@@ -38,8 +38,32 @@ function parseArgs(argv) {
     else if (argv[i] === '--executor') args.executor = argv[++i]
     else if (argv[i] === '--environment') args.environment = argv[++i]
     else if (argv[i] === '--no-publish') args.noPublish = true
+    else if (argv[i] === '--no-reports') args.noReports = true
+    else if (argv[i] === '--report-dir') args.reportDir = argv[++i]
   }
   return args
+}
+
+const REPO_ROOT = path.join(__dirname, '..', '..')
+
+function readTemplateVersion() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf-8'))
+    if (pkg.version) return pkg.version
+  } catch {
+    /* fall through */
+  }
+  try {
+    return fs.readFileSync(path.join(REPO_ROOT, 'VERSION'), 'utf-8').trim()
+  } catch {
+    return '0.0.0'
+  }
+}
+
+function resolveReportDir() {
+  if (args.noReports) return null
+  const configured = args.reportDir || process.env.REPORT_DIR || 'reports'
+  return path.isAbsolute(configured) ? configured : path.join(REPO_ROOT, configured)
 }
 
 const args = parseArgs(process.argv)
@@ -127,28 +151,6 @@ function resolveFeaturePaths() {
 }
 
 const featurePaths = args.fromSuite ? [] : resolveFeaturePaths()
-
-// ---------------------------------------------------------------------------
-// Gherkin parsing
-// ---------------------------------------------------------------------------
-
-function parseFeature(filePath) {
-  const source = fs.readFileSync(filePath, 'utf-8')
-  const newId = IdGenerator.uuid()
-  const messages = generateMessages(source, filePath, 'text/x.cucumber.gherkin+plain', {
-    newId,
-    includeGherkinDocument: true,
-    includePickles: false,
-  })
-
-  const parseError = messages.find(m => m.parseError)
-  if (parseError) throw new Error(`Parse error: ${parseError.parseError.message}`)
-
-  const docMessage = messages.find(m => m.gherkinDocument)
-  if (!docMessage) throw new Error(`No gherkin document found in: ${filePath}`)
-
-  return docMessage.gherkinDocument
-}
 
 // ---------------------------------------------------------------------------
 // Screenshot helper — finds most recent file under ~/.maestro/tests/
@@ -242,53 +244,60 @@ function runMaestroFlow(flowName, env, platform) {
 // ---------------------------------------------------------------------------
 
 async function runFeature(featurePath, filterScenarioName, platform, appId, bsConfig) {
-  const doc = parseFeature(featurePath)
-  const feature = doc.feature
-
-  if (!feature) {
-    console.error(`No feature found in: ${featurePath}`)
+  let pickles
+  try {
+    pickles = getPickles(featurePath)
+  } catch (err) {
+    console.error(`Parse error in ${featurePath}: ${err.message}`)
     return []
   }
 
-  console.log(`\nFeature: ${feature.name}`)
+  if (pickles.length === 0) {
+    console.error(`No executable scenarios found in: ${featurePath}`)
+    return []
+  }
+
+  const fileName = path.basename(featurePath)
+  console.log(`\nFeature: ${fileName}`)
+
+  const nameCounts = new Map()
+  for (const pickle of pickles) {
+    nameCounts.set(pickle.name, (nameCounts.get(pickle.name) || 0) + 1)
+  }
 
   /** @type {{ scenarioName: string, status: 'passed' | 'failed', error: string | null, screenshotPath: string | null, testCaseId?: string | number }[]} */
   const results = []
 
-  for (const child of feature.children) {
-    const scenario = child.scenario
-    if (!scenario) continue
-    if (filterScenarioName && scenario.name !== filterScenarioName) continue
+  const nameIndex = new Map()
 
-    console.log(`\nScenario: ${scenario.name}`)
+  for (const pickle of pickles) {
+    if (filterScenarioName && pickle.name !== filterScenarioName) continue
 
-    const flowsToRun = []
-    const seen = new Set()
+    const idx = nameIndex.get(pickle.name) || 0
+    nameIndex.set(pickle.name, idx + 1)
+    const displayName = pickleLabel(pickle, idx, nameCounts.get(pickle.name))
 
-    for (const step of scenario.steps) {
-      const stepText = step.text
-      let resolved
+    console.log(`\nScenario: ${displayName}`)
 
-      try {
-        resolved = resolveStep(stepText)
-      } catch (err) {
-        console.error(`  Step error: ${err.message}`)
-        results.push({
-          scenarioName: scenario.name,
-          status: 'failed',
-          error: err.message,
-          screenshotPath: null,
-        })
-        continue
-      }
-
-      const { flow, params } = resolved
-      if (flow && !seen.has(flow)) {
-        seen.add(flow)
-        flowsToRun.push({ flow, params })
-      } else if (!flow) {
-        console.debug(`  [debug] Step skipped (flow: null): "${stepText}"`)
-      }
+    const stepTexts = getPickleStepTexts(pickle)
+    let flowsToRun
+    try {
+      flowsToRun = buildFlowsFromSteps(stepTexts, (text) => {
+        const resolved = resolveStep(text)
+        if (!resolved.flow) {
+          console.debug(`  [debug] Step skipped (flow: null): "${text}"`)
+        }
+        return resolved
+      })
+    } catch (err) {
+      console.error(`  Step error: ${err.message}`)
+      results.push({
+        scenarioName: displayName,
+        status: 'failed',
+        error: err.message,
+        screenshotPath: null,
+      })
+      continue
     }
 
     /** @type {'passed' | 'failed'} */
@@ -313,14 +322,14 @@ async function runFeature(featurePath, filterScenarioName, platform, appId, bsCo
         scenarioStatus = result.status
         scenarioError = result.error
         if (result.status === 'passed') {
-          console.log(`  Scenario "${scenario.name}" passed on BrowserStack`)
+          console.log(`  Scenario "${displayName}" passed on BrowserStack`)
         } else {
-          console.error(`  Scenario "${scenario.name}" failed on BrowserStack: ${result.error}`)
+          console.error(`  Scenario "${displayName}" failed on BrowserStack: ${result.error}`)
         }
       } catch (err) {
         scenarioStatus = 'failed'
         scenarioError = err.message
-        console.error(`  BrowserStack error for "${scenario.name}": ${err.message}`)
+        console.error(`  BrowserStack error for "${displayName}": ${err.message}`)
       }
     } else {
       for (const { flow: flowName, params: flowParams } of flowsToRun) {
@@ -340,7 +349,7 @@ async function runFeature(featurePath, filterScenarioName, platform, appId, bsCo
     }
 
     results.push({
-      scenarioName: scenario.name,
+      scenarioName: displayName,
       status: scenarioStatus,
       error: scenarioError,
       screenshotPath,
@@ -362,9 +371,8 @@ function buildScenarioIndex(featuresDir) {
   for (const file of files) {
     const filePath = path.join(dir, file)
     try {
-      const doc = parseFeature(filePath)
-      for (const child of (doc.feature || {}).children || []) {
-        if (child.scenario) index.set(child.scenario.name, filePath)
+      for (const pickle of getPickles(filePath)) {
+        index.set(pickle.name, filePath)
       }
     } catch {
       // skip unparseable files
@@ -453,6 +461,7 @@ async function runPlatform(platform, planId, suiteId) {
 // ---------------------------------------------------------------------------
 
 async function run() {
+  const startedAt = new Date().toISOString()
   const planId = args.planId || process.env.AZURE_TEST_PLAN_ID
   const suiteId = args.suiteId || process.env.AZURE_TEST_SUITE_ID
 
@@ -526,6 +535,21 @@ async function run() {
   if (!publishResults) {
     const reason = args.noPublish ? '--no-publish flag set' : 'AZURE_DEVOPS_PAT and/or AZURE_TEST_PLAN_ID not set'
     console.log(`\nNote: ${reason} — skipping Azure Test Plans publishing.`)
+  }
+
+  const reportDir = resolveReportDir()
+  if (reportDir) {
+    const finishedAt = new Date().toISOString()
+    const summary = buildRunSummary({
+      startedAt,
+      finishedAt,
+      perPlatform,
+      version: readTemplateVersion(),
+    })
+    const { jsonPath, xmlPath } = writeReports(summary, reportDir)
+    console.log(`\nReports written:`)
+    console.log(`  ${jsonPath}`)
+    console.log(`  ${xmlPath}`)
   }
 
   process.exit(totalFailed > 0 ? 1 : 0)

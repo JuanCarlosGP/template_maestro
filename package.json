@@ -1,6 +1,6 @@
 {
   "name": "izertis-maestro-template",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Izertis Maestro Template — E2E framework with Maestro and Gherkin",
   "private": true,
   "engines": {
@@ -8,7 +8,14 @@
   },
   "scripts": {
     "validate": "node maestro/scripts/validate.js",
-    "doctor": "node maestro/scripts/doctor.js"
+    "doctor": "node maestro/scripts/doctor.js",
+    "test": "node --test maestro/scripts/lib/gherkin.test.js maestro/scripts/lib/step-defs.test.js maestro/scripts/lib/write-reports.test.js",
+    "check": "node maestro/scripts/check.js",
+    "gherkin-extract": "node maestro/scripts/gherkin-dictionary/extract.js",
+    "feature": "node maestro/scripts/gherkin-runner.js",
+    "demo-login": "node maestro/scripts/gherkin-runner.js --feature maestro/features/DemoLogin.feature --platform all --no-publish",
+    "flow:android": "node maestro/scripts/run-flow.js --platform android",
+    "flow:ios": "node maestro/scripts/run-flow.js --platform ios"
   },
   "dependencies": {
     "@cucumber/gherkin": "^27.0.0",

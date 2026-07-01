@@ -5,7 +5,7 @@ const repoRoot = path.join(__dirname, '..', '..')
 
 const allSteps = fs
   .readdirSync(__dirname)
-  .filter(f => f.endsWith('.json'))
+  .filter(f => f.endsWith('.json') && f !== 'schema.json')
   .sort()
   .flatMap(f => require(path.join(__dirname, f)).steps.map(entry => ({
     ...entry,

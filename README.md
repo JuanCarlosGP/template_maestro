@@ -1,6 +1,6 @@
 # Izertis Maestro Template
 
-**Versión:** 0.1.0
+**Versión:** 0.3.0
 
 Plantilla del framework de tests E2E con **Maestro** y **Gherkin**. Incluye escenarios demo ficticios que ilustran el patrón shared / Android / iOS. Sustituye los demos por tests reales de tu app.
 
@@ -12,76 +12,72 @@ Plantilla del framework de tests E2E con **Maestro** y **Gherkin**. Incluye esce
 
 ---
 
-## Arquitectura del runner
+## Capas del template
 
-Los tests están definidos en Gherkin (`.feature`), que el runner mapea a flows de Maestro mediante los ficheros JSON de `step-definitions/`. Opcionalmente, los resultados se publican en Azure Test Plans.
+### Core (siempre)
+
+Gherkin, step-definitions, flows Maestro, runner y validación estática. Funciona sin Azure, sin CI concreto y sin app real (modo demo).
 
 ```
-Azure Test Plans ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► dispositivo
-        ▲                                                                              │
-        └──────────────────── publish-results.js ◄─────────────────────────────────────┘
+.features ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► dispositivo
+                    │
+                    └──► reports/summary.json + junit.xml  (post-ejecución)
 ```
+
+### Calidad portable
+
+Comandos agnósticos de CI:
+
+```bash
+npm run check      # test + validate + gherkin-extract (strict)
+npm run validate   # Gherkin, schema step-defs, flows
+npm test           # unit tests del framework
+```
+
+Detalle CI: [`docs/CI.md`](docs/CI.md). Ejemplos copiables en [`integrations/`](integrations/).
+
+### Integraciones opcionales (por cliente)
+
+| Integración | Cuándo | Cómo |
+|-------------|--------|------|
+| Azure Test Plans | Cliente usa Azure DevOps QA | `publish-results.js`, vars en `.env`, quitar `--no-publish` |
+| BrowserStack | Ejecución en cloud | `--executor browserstack` |
+| Azure MCP / skills | Authoring con ADO | `.mcp.json`, `.claude/skills/` |
+
+---
+
+## Catálogo vs resultados de ejecución
+
+| Herramienta | Momento | Salida |
+|-------------|---------|--------|
+| [`gherkin-dictionary`](maestro/scripts/gherkin-dictionary/) | Estático, sin device | Catálogo paso → step-def → flow |
+| `reports/` (tras `npm run feature`) | Post-ejecución | Pass/fail, errores, JUnit para CI |
 
 ---
 
 ## Requisitos
 
-- **macOS** o **WSL (Ubuntu)** — el Makefile y los scripts asumen entorno Unix (`bash`, `grep`, `make`). En Windows usa WSL.
-- Node.js 20+ (`make setup` instala el resto)
+- **macOS** o **WSL (Ubuntu)** — el Makefile asume entorno Unix. En Windows nativo usa **npm** (ver abajo).
+- Node.js 20+ (`make setup` o `npm install`)
 - Para ejecución en dispositivo: simulador iOS o emulador Android con la app instalada
 
 ## Instalación
 
 ```bash
 make setup
+# o: cp .env.example .env && npm install
 ```
 
-`make setup` crea `.env` desde `.env.example`, instala dependencias de Node (incluido el MCP de Azure DevOps), instala el **Maestro CLI** si falta, y ejecuta el preflight (`make doctor`).
-
 ```bash
-make doctor     # comprueba deps, Maestro, dispositivos, PAT y APP_SOURCE_DIR
-make validate   # chequeo estático Gherkin -> step-definitions -> flows (sin dispositivo)
-```
-
-### Comandos adicionales
-
-```bash
-make install           # solo dependencias de Node
-make install-maestro   # solo el Maestro CLI
-make install-android   # adb install
-make install-ios       # xcrun simctl install booted
-make copy-builds       # copia builds desde ANDROID_SRC / IOS_SRC
+make doctor     # deps, Maestro, dispositivos
+npm run check   # gate headless (recomendado en CI)
 ```
 
 ---
 
 ## Variables de entorno
 
-Todas en `.env` (plantilla: `.env.example`).
-
-**Azure** (opcional — publicar resultados)
-
-| Variable | Descripción |
-| -------- | ----------- |
-| `AZURE_DEVOPS_PAT` | Personal Access Token |
-| `AZURE_DEVOPS_ORG` | Organización |
-| `AZURE_DEVOPS_PROJECT` | Proyecto |
-| `PLAN_ID` / `SUITE_ID` | Plan y suite de Azure Test Plans |
-
-**App demo** (sustituir por tu app real)
-
-| Variable | Descripción |
-| -------- | ----------- |
-| `ANDROID_APP_ID` / `IOS_APP_ID` | Bundle ID instalado en el dispositivo |
-| `ANDROID_APP_NAME` / `IOS_APP_NAME` | Nombre en diálogos de permisos |
-| `USERNAME` / `PASSWORD` | Credenciales de demo |
-| `PLATFORM` | `android`, `ios` o `all` |
-
-**Dispositivo** (solo si hace falta)
-
-| Variable | Descripción |
-| -------- | ----------- |
-| `ANDROID_SERIAL` | Emulador o móvil por USB en WSL |
+Plantilla: [`.env.example`](.env.example) — bloques **Core**, **Reporting**, **Azure (opcional)**, **BrowserStack (opcional)**.
 
 ---
 
@@ -93,42 +89,43 @@ Todas en `.env` (plantilla: `.env.example`).
 | `DemoLogin.feature` | Shared | `flows/DemoLogin.yml` → `shared/DemoLogin.yml` |
 | `DemoAndroidMenu.feature` | Android | `flows/DemoAndroidMenu.yml` → `android/` |
 | `DemoIosTabs.feature` | iOS | `flows/DemoIosTabs.yml` → `ios/` |
-
-Los selectores son **genéricos y ficticios** — ilustran la estructura del framework, no están pensados para pasar contra una app concreta sin adaptarlos.
+| `DemoGherkinStructures.feature` | Background + Outline | Pickles expandidos (3 ejecuciones) |
 
 ---
 
 ## Ejecución
 
-### Feature concreta
+### npm (Windows / multiplataforma)
+
+```bash
+npm run check
+npm test
+npm run validate
+npm run demo-login
+npm run feature -- --feature maestro/features/DemoLogin.feature --platform ios --no-publish
+npm run flow:android -- --flow maestro/flows/DemoLogin.yml
+npm run gherkin-extract
+```
+
+Tras un run con el runner, revisa `reports/summary.json` y `reports/junit.xml` (desactivar con `--no-reports`).
+
+### make (macOS / WSL)
 
 ```bash
 make feature FEATURE=maestro/features/DemoLogin.feature PLATFORM=ios
-make demo-login PLATFORM=android
-```
-
-### Flow Maestro directo (sin runner Gherkin)
-
-```bash
 make flow-android FLOW=maestro/flows/DemoLogin.yml
-make flow-ios     FLOW=maestro/flows/DemoLogin.yml
-```
-
-### Suite completa desde Azure Test Plans (opcional)
-
-```bash
-make suite PLATFORM=android
+make suite PLATFORM=android   # requiere Azure Test Plans configurado
 ```
 
 ---
 
 ## Diccionario Gherkin
 
-Catálogo de pasos Gherkin cruzados con `step-definitions/`. Detalle en [`maestro/scripts/gherkin-dictionary/README.md`](maestro/scripts/gherkin-dictionary/README.md).
+[`maestro/scripts/gherkin-dictionary/README.md`](maestro/scripts/gherkin-dictionary/README.md)
 
 ```bash
-make gherkin-report    # extrae datos y abre la UI
-make gherkin-extract   # solo regenerar JSON/CSV
+make gherkin-report
+make gherkin-extract
 ```
 
 ---
@@ -137,37 +134,35 @@ make gherkin-extract   # solo regenerar JSON/CSV
 
 ```text
 izertis-maestro-template/
+├── docs/CI.md
+├── integrations/          # ejemplos CI copiables (no pipeline oficial)
+├── reports/               # resultados de ejecución (gitignored)
 └── maestro/
-    ├── features/          # Escenarios Gherkin (.feature)
-    ├── flows/             # Entry flows Maestro (.yml)
-    ├── shared/            # Flows compartidos entre plataformas
-    ├── android/           # Flows específicos de Android
-    ├── ios/               # Flows específicos de iOS
-    ├── step-definitions/  # Mapeo paso Gherkin → flow Maestro
+    ├── features/
+    ├── flows/ shared/ ios/ android/
+    ├── step-definitions/  # schema.json + *.json
     └── scripts/
-        ├── gherkin-dictionary/   # Diccionario Gherkin (extract + UI)
+        ├── lib/             # gherkin, write-reports, tests
+        ├── check.js         # gate headless CI
         ├── gherkin-runner.js
         ├── validate.js
-        ├── doctor.js
-        └── publish-results.js
+        └── gherkin-dictionary/
 ```
 
 ---
 
 ## Añadir un test real
 
-1. Crear `maestro/features/<Nombre>.feature` con el escenario en Gherkin.
-2. Crear `maestro/step-definitions/<nombre>.json` mapeando cada paso a un flow (o `null`).
-3. Crear los flows en `flows/`, `shared/`, `android/` e `ios/` según la plataforma.
-4. Ejecutar `make validate` y `make gherkin-extract` (debe dar `pasosSinDefinicion: 0`).
-
-Cada área funcional tiene su propio JSON en `step-definitions/`. `index.js` los descubre y fusiona automáticamente.
+1. `maestro/features/<Nombre>.feature`
+2. `maestro/step-definitions/<nombre>.json` (validar contra `schema.json`)
+3. Flows en `flows/`, `shared/`, `android/`, `ios/`
+4. `npm run check`
 
 ---
 
 ## Emulador Android
 
 ```bash
-make emulator-start   # arranca emulator -avd Small_Phone
-make emulator-stop    # adb emu kill
+make emulator-start
+make emulator-stop
 ```

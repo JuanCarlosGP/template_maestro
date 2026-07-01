@@ -9,3 +9,4 @@ yarn-error.log*
 .env.local
 maestro/scripts/gherkin-dictionary/reports/gherkin-extraction.json
 maestro/scripts/gherkin-dictionary/reports/gherkin-extraction.csv
+reports/
