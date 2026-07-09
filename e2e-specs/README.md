@@ -1,7 +1,8 @@
-# .openspec — E2E automation specs
+# e2e-specs — automation planning specs
 
-A lightweight, convention-based spec system for the **Izertis Maestro Template**. **Not
-an npm package** — structured markdown plus optional agent playbooks.
+A lightweight, convention-based spec folder for the **Izertis Maestro Template**. **Not
+an npm package** and **not** [OpenSpec](https://openspec.dev/) — just structured markdown
+plus optional agent playbooks.
 
 Each spec is the **source of truth for automating one ticket / test case**: it captures the
 Gherkin, the automation plan, per-platform notes, and decisions that otherwise vanish into
@@ -10,7 +11,7 @@ chat (selector strategy, dropped scenarios and *why*, whether an MSW dev build w
 ## Layout
 
 ```
-.openspec/
+e2e-specs/
 └── specs/
     └── <id>.md     # Azure work item, GitHub Issue number, or manual slug
 ```
@@ -18,8 +19,8 @@ chat (selector strategy, dropped scenarios and *why*, whether an MSW dev build w
 ## Workflow
 
 1. Start from [`docs/agent/author-e2e-test/`](../docs/agent/author-e2e-test/SKILL.md) with a ticket ID and Gherkin.
-2. The **test-planner** agent ([`docs/agent/agents/test-planner.md`](../docs/agent/agents/test-planner.md)) reads the ticket (Azure MCP, GitHub, or pasted Gherkin),
-   existing flows, and app source, then writes `.openspec/specs/<id>.md`.
+2. The **test-planner** agent ([`docs/agent/agents/test-planner.md`](../docs/agent/agents/test-planner.md)) reads the ticket (Azure, GitHub, or GitLab MCP — or pasted Gherkin),
+   existing flows, and app source, then writes `e2e-specs/specs/<id>.md`.
 3. The spec becomes the source of truth for building flows and records the final outcome (Automated / Dropped / MSW).
 
 ## Spec format

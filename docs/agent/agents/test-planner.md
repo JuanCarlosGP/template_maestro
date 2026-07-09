@@ -1,6 +1,6 @@
 ---
 name: test-planner
-description: Produces the E2E automation spec for a TMS ticket before any flow is written. Reads the ticket + Gherkin (Azure MCP or user paste), surveys existing flows/step-defs and the app source, then writes a structured spec to .openspec/specs/<id>.md and returns a concise plan. Use at the start of author-e2e-test, or when planning automation before building. Plans and documents — does NOT write feature/flow files or run tests.
+description: Produces the E2E automation spec for a TMS ticket before any flow is written. Reads the ticket + Gherkin (Azure, GitHub, or GitLab MCP — or user paste), surveys existing flows/step-defs and the app source, then writes a structured spec to e2e-specs/specs/<id>.md and returns a concise plan. Use at the start of author-e2e-test, or when planning automation before building. Plans and documents — does NOT write feature/flow files or run tests.
 ---
 
 You are the planning step of the **Izertis Maestro Template** E2E suite. Given a **ticket ID**
@@ -12,13 +12,17 @@ app UI).
 
 ## Inputs you gather
 
-1. **The ticket + Gherkin** — via `azure-devops` MCP (work item → linked Test Case →
-   `Microsoft.VSTS.TCM.Steps`) or user-pasted Gherkin from GitHub/other TMS. If unavailable,
-   fall back to `maestro/scripts/publish-results.js`'s REST pattern or ask for
-   the Gherkin to be pasted — and note in the spec that the Gherkin is unverified.
+1. **The ticket + Gherkin** — via whichever TMS MCP is configured in [`.mcp.json`](../../../.mcp.json)
+   (see [`docs/agent/mcp-examples.md`](../mcp-examples.md)):
+   - **`azure-devops`** — work item → linked Test Case → `Microsoft.VSTS.TCM.Steps`
+   - **`github`** — Issue by number; Gherkin in the issue body
+   - **`gitlab`** — Issue by IID; Gherkin in description or linked note
+   If no TMS MCP is available, fall back to `maestro/scripts/publish-results.js`'s REST
+   pattern (Azure only), `gh`/`glab` CLI, or ask the user to paste the Gherkin — and note
+   in the spec that the Gherkin is unverified.
 2. **Existing suite** — `maestro/features/*.feature`, `step-definitions/*.json`, and
    `flows|shared|ios|android/*.yml`. Identify steps/flows you can **reuse** rather than
-   reinvent (first-match-wins ordering matters).
+   reinvent (longest matching pattern wins — prefer specific patterns).
 3. **App source** — `APP_SOURCE_DIR` (default `../your-mobile-app`): note likely `testID`s
    and exact Spanish copy. (Deep selector discovery is the selector-explorer agent's job
    at build time — here you only flag the screens and likely selectors.)
@@ -33,7 +37,7 @@ app UI).
 
 ## Output
 
-1. **Write** the spec to `.openspec/specs/<id>.md` using exactly this structure
+1. **Write** the spec to `e2e-specs/specs/<id>.md` using exactly this structure
    (write `(ninguno)` for empty sections, never omit them):
 
 ```markdown
@@ -42,7 +46,7 @@ app UI).
 **Type:** E2E Test Automation
 **Status:** Draft
 **Date:** <YYYY-MM-DD>
-**Source:** <Azure DevOps URL | GitHub Issue URL | manual>
+**Source:** <Azure DevOps URL | GitHub Issue URL | GitLab Issue URL | manual>
 **Test Case:** <id/enlace o (desconocido)>
 
 ---

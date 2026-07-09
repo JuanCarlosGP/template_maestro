@@ -11,11 +11,11 @@ with a linked Test Case, or Gherkin pasted from GitHub Issues / another TMS.
 Harness prose is English; **everything you generate (scenario names, steps, branch slugs)
 stays in Spanish** to match the suite and the app's UI.
 
-## Phase 0 — Plan (test-planner → OpenSpec)
+## Phase 0 — Plan (test-planner → e2e-spec)
 
 Launch the **test-planner** agent ([`docs/agent/agents/test-planner.md`](../agents/test-planner.md)) with the ticket ID. It fetches the Gherkin (via MCP or user paste),
 surveys existing flows/step-defs and the app source, and writes the
-automation spec to `.openspec/specs/<id>.md`. **Show the user the plan and get a
+automation spec to `e2e-specs/specs/<id>.md`. **Show the user the plan and get a
 quick confirmation** before building.
 
 That spec is the **source of truth** for the rest of this playbook: which scenario(s) to
@@ -36,7 +36,22 @@ Phase 1 and read it from the spec instead.
    `maestro/scripts/publish-results.js` (`fetchSuiteTestCases`) via a Node one-off, or ask
    the user to paste the Gherkin. Do not stall silently.
 
-**Other TMS (GitHub Issue, TestRail, etc.):** read Gherkin from the issue body or ask the user to paste it. Record the source URL in the OpenSpec header.
+**GitHub Issues:**
+
+1. If the `github` MCP is configured ([`docs/agent/mcp-examples.md`](../mcp-examples.md)), read the
+   issue by number and extract Gherkin from the body.
+2. Otherwise use `gh issue view <n>` or ask the user to paste the Gherkin.
+3. Record the issue URL in the e2e-spec header.
+
+**GitLab Issues:**
+
+1. If the `gitlab` MCP is configured ([`docs/agent/mcp-examples.md`](../mcp-examples.md)), read the
+   issue and extract Gherkin from the description or linked content.
+2. Otherwise use `glab issue view <iid>` or ask the user to paste the Gherkin.
+3. Record the issue URL in the e2e-spec header.
+
+**Other TMS (TestRail, Jira, etc.):** read Gherkin from the ticket or ask the user to paste it.
+Record the source URL in the e2e-spec header.
 
 Echo the extracted Gherkin back to the user before generating, so they can confirm it.
 
@@ -108,11 +123,11 @@ When the gate trips and it's still red, **stop and escalate** with options:
 
 When green on both platforms:
 
-1. **Update the OpenSpec `Gate / Resultado`** section of `.openspec/specs/<id>.md`
+1. **Update the `Gate / Resultado`** section of `e2e-specs/specs/<id>.md`
    (Automatizado iOS+Android / Descartado + motivo / Requiere MSW).
 2. **Invoke the committing playbook** ([`docs/agent/committing/SKILL.md`](../committing/SKILL.md)) — it will branch (or reuse the current branch), stage the
    changed files (`.feature`, `step-definitions/`, `flows/`, `shared/`, `ios/`, `android/`,
-   `.openspec/`), propose a conventional commit message referencing the ticket ID, get a
+   `e2e-specs/`), propose a conventional commit message referencing the ticket ID, get a
    quick confirmation, commit, push, and open a **draft** PR linked to the ticket. Do not push or create the PR yourself — let committing handle it.
 
 If the bounded gate tripped and you dropped the case or switched to MSW, record that outcome

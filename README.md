@@ -20,7 +20,7 @@ Plantilla del framework de tests E2E con **Maestro** y **Gherkin**. Incluye esce
 Gherkin, step-definitions, flows Maestro, runner y validación estática. Funciona sin Azure, sin CI concreto y sin app real (modo demo).
 
 ```
-.features ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► dispositivo
+features/ ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► dispositivo
                     │
                     └──► reports/summary.json + junit.xml  (post-ejecución)
 ```
@@ -28,12 +28,12 @@ Gherkin, step-definitions, flows Maestro, runner y validación estática. Funcio
 ### Calidad portable
 
 ```bash
-npm run check      # test + validate + gherkin-extract (strict)
-npm run validate   # Gherkin, schema step-defs, flows
+npm run check      # test + validate + gherkin-extract (strict) — gate CI recomendado
+npm run validate   # Gherkin, schema step-defs, flows (sin dispositivo)
 npm test           # unit tests del framework
 ```
 
-Detalle CI: [`docs/CI.md`](docs/CI.md). Ejemplos copiables en [`integrations/`](integrations/).
+Detalle CI: [`docs/CI.md`](docs/CI.md). Ejemplos copiables en [`integrations/`](integrations/README.md) (GitHub Actions, Azure Pipelines, GitLab CI).
 
 ### Integraciones opcionales (por cliente)
 
@@ -41,18 +41,21 @@ Detalle CI: [`docs/CI.md`](docs/CI.md). Ejemplos copiables en [`integrations/`](
 |-------------|--------|------|
 | Azure Test Plans | Cliente usa Azure DevOps QA | `publish-results.js`, vars en `.env`, quitar `--no-publish` |
 | BrowserStack | Ejecución en cloud | `--executor browserstack` |
-| Authoring asistido | Automatizar con agente IA | [`docs/agent/`](docs/agent/README.md), [`.openspec/`](.openspec/README.md), [`.mcp.json`](.mcp.json) |
+| Authoring asistido | Automatizar con agente IA | [`docs/agent/`](docs/agent/README.md), [`e2e-specs/`](e2e-specs/README.md), [`.mcp.json`](.mcp.json) |
 
 ### Authoring asistido (opcional)
 
 No necesario para `npm run check` ni CI headless.
 
-- **[`docs/agent/`](docs/agent/)** — playbooks neutros (planificar, autorar, depurar tests)
-- **[`.openspec/specs/`](.openspec/README.md)** — specs de automatización por ticket
-- **[`.mcp.json`](.mcp.json)** — MCP Maestro (+ Azure opcional)
-- **[`contrib/ide/`](contrib/ide/README.md)** — wiring local opcional (skills, hooks IDE)
+```
+ticket → test-planner → e2e-specs/specs/<id>.md → author-e2e-test → maestro/
+```
 
-Reglas del proyecto para agentes: [`AGENTS.md`](AGENTS.md).
+- **[`docs/agent/`](docs/agent/)** — playbooks neutros (planificar, autorar, depurar tests)
+- **[`e2e-specs/specs/`](e2e-specs/README.md)** — specs de automatización por ticket (no [OpenSpec](https://openspec.dev/))
+- **[`.mcp.json`](.mcp.json)** — solo MCP `maestro` por defecto; TMS opcional (Azure, GitHub, GitLab) → [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md)
+
+Reglas para agentes: [`AGENTS.md`](AGENTS.md).
 
 ---
 
@@ -86,9 +89,9 @@ El **contrato del template** es npm + Node 20; funciona en Windows, macOS y Linu
 
 Notas:
 
-- **Windows:** instala Maestro manualmente si `npm run setup` lo indica ([docs Maestro](https://docs.maestro.dev/getting-started/installing-maestro)). Emulador Android con Android Studio.
+- **Windows:** instala Maestro manualmente si `npm run setup` lo indica. Ajusta la ruta de `maestro` en [`.mcp.json`](.mcp.json) si usas el MCP del IDE. Emulador Android con Android Studio.
 - **macOS:** único SO con soporte local **iOS + Android** (Xcode + Android Studio).
-- **Linux:** Android en emulador; iOS solo vía CI macOS, agente cloud (p. ej. BrowserStack) o `--executor browserstack` en `.env`.
+- **Linux:** Android en emulador; iOS solo vía CI macOS, agente cloud (p. ej. BrowserStack) o `--executor browserstack`.
 - **`npm run doctor`** puede fallar sin `adb`/`xcrun` aunque `npm run check` pase — normal en máquinas solo headless.
 
 Comandos CLI de emuladores (macOS/Linux): [`docs/DEVICE.md`](docs/DEVICE.md).
@@ -114,9 +117,11 @@ npm run check      # gate headless (recomendado en CI)
 
 ## Variables de entorno
 
-Plantilla: [`.env.example`](.env.example) — bloques **Core**, **Reporting**, **Azure (opcional)**, **BrowserStack (opcional)**.
+Plantilla: [`.env.example`](.env.example) — bloques **Core**, **Reporting**, **Azure (opcional)**, **BrowserStack (opcional)**, **IDE MCP (opcional)**.
 
-Para Azure Test Plans, usa `AZURE_TEST_PLAN_ID` y `AZURE_TEST_SUITE_ID`. El runner también acepta `PLAN_ID` y `SUITE_ID` como alias legacy.
+- **Core:** `ANDROID_APP_ID`, `IOS_APP_ID`, `APP_SOURCE_DIR`, credenciales de demo, etc.
+- **Azure (opcional):** `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID` (alias legacy `PLAN_ID` / `SUITE_ID`), `AZURE_DEVOPS_PAT` para publicar resultados.
+- **IDE MCP (opcional):** `GITHUB_TOKEN` si añades el MCP de GitHub en [`.mcp.json`](.mcp.json) — ver [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md). No lo usa ningún script npm.
 
 ---
 
@@ -139,9 +144,9 @@ Al hacer fork de la template, sustituye los demos por tests de tu app:
 | Acción | Qué hacer |
 |--------|-----------|
 | **Sustituir** | `Demo*.feature`, `demo-*.json` en `step-definitions/`, flows `Demo*` en `flows/`, `shared/`, `android/` e `ios/` |
-| **Configurar** | `.env`: `ANDROID_APP_ID`, `IOS_APP_ID`, `APP_SOURCE_DIR`, credenciales; Azure opcional con `AZURE_TEST_PLAN_ID` / `AZURE_TEST_SUITE_ID` |
-| **Conservar** | Estructura de carpetas, `npm run check`, `npm run validate`, ejemplos CI headless en `integrations/` |
-| **Opcional** | Publicación Azure, BrowserStack, `docs/agent/`, `.openspec/`, `contrib/ide/` |
+| **Configurar** | `.env` (app IDs, `APP_SOURCE_DIR`, credenciales); Azure solo si publicas en Test Plans |
+| **Conservar** | Estructura de carpetas, `npm run check`, ejemplos CI en [`integrations/`](integrations/README.md) |
+| **Opcional** | Authoring: `docs/agent/`, `e2e-specs/`, [`.mcp.json`](.mcp.json) + [`mcp-examples.md`](docs/agent/mcp-examples.md); BrowserStack; publicación Azure |
 
 Para el primer escenario real, sigue [Añadir un test real](#añadir-un-test-real).
 
@@ -150,7 +155,7 @@ Para el primer escenario real, sigue [Añadir un test real](#añadir-un-test-rea
 ## Ejecución
 
 ```bash
-npm run check
+npm run check          # gate headless (preferido tras cambios)
 npm test
 npm run validate
 npm run doctor
@@ -166,7 +171,7 @@ Tras un run con el runner, revisa `reports/summary.json` y `reports/junit.xml` (
 
 Pasa `--no-publish` al runner para no publicar en Azure (valor por defecto en los scripts demo).
 
-Suite completa desde Azure Test Plans:
+Suite completa desde Azure Test Plans (opcional):
 
 ```bash
 node maestro/scripts/gherkin-runner.js --from-suite --platform all --no-publish
@@ -197,14 +202,15 @@ npm run gherkin-extract     # solo regenera JSON/CSV
 
 ```text
 izertis-maestro-template/
-├── AGENTS.md              # reglas para agentes IA (neutro)
+├── .env.example           # plantilla de configuración (copiar a .env)
+├── .mcp.json              # MCP maestro (TMS opcional — ver docs/agent/mcp-examples.md)
+├── AGENTS.md              # reglas para agentes IA
 ├── docs/
 │   ├── CI.md
 │   ├── DEVICE.md          # emuladores / adb / suite CLI (opcional)
-│   └── agent/             # playbooks authoring (opcional)
-├── contrib/ide/           # wiring IDE local (opcional)
-├── .openspec/             # specs de automatización (opcional)
-├── integrations/          # ejemplos CI
+│   └── agent/             # playbooks + mcp-examples.md (opcional)
+├── e2e-specs/             # specs de planificación E2E (opcional)
+├── integrations/          # ejemplos CI headless (copiar al proyecto cliente)
 ├── reports/               # resultados (gitignored)
 └── maestro/
     ├── features/
@@ -221,7 +227,8 @@ izertis-maestro-template/
 
 ## Añadir un test real
 
-1. `maestro/features/<Nombre>.feature`
-2. `maestro/step-definitions/<nombre>.json` (validar contra `schema.json`)
-3. Flows en `flows/`, `shared/`, `android/`, `ios/`
-4. `npm run check`
+1. **(Opcional)** Planificar con el agente **test-planner** → `e2e-specs/specs/<id>.md` ([`docs/agent/`](docs/agent/README.md))
+2. `maestro/features/<Nombre>.feature` (Gherkin en español)
+3. `maestro/step-definitions/<nombre>.json` (validar contra `schema.json`)
+4. Flows en `flows/`, `shared/`, `android/`, `ios/` (cubrir ambas plataformas salvo excepción justificada)
+5. `npm run check`

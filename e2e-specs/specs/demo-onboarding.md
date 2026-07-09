@@ -1,6 +1,6 @@
 # Spec de ejemplo: DemoOnboarding
 
-> Plantilla OpenSpec del **Izertis Maestro Template**. Sustituir por specs reales vinculadas a work items.
+> Plantilla de spec E2E del **Izertis Maestro Template**. Sustituir por specs reales vinculadas a work items.
 
 ## Objetivo
 

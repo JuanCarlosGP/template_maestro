@@ -8,4 +8,14 @@ Node scripts for **IDE integration** (post-edit validation, credential guard). N
 | [`validate-edit.js`](validate-edit.js) | After Edit/Write on features/step-defs/flows | Runs static validate |
 | [`env-readiness.js`](env-readiness.js) | Session start | Prints device/env summary |
 
-Wire-up: [`contrib/ide/hooks/README.md`](../../../contrib/ide/hooks/README.md).
+## Wire-up (local, per developer)
+
+Each IDE uses different config for post-edit hooks. Example (replace `$REPO` with your project root):
+
+```bash
+node "$REPO/maestro/scripts/hooks/block-secrets.js"
+node "$REPO/maestro/scripts/hooks/validate-edit.js"
+node "$REPO/maestro/scripts/hooks/env-readiness.js"
+```
+
+See also: [`docs/agent/`](../../../docs/agent/README.md), [`AGENTS.md`](../../../AGENTS.md).

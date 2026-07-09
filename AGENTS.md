@@ -4,14 +4,24 @@ E2E test **framework template** by **Izertis**, driven by **Maestro** and **Gher
 
 Harness prose is in English; **generated test output (Gherkin scenarios, branch slugs) stays in Spanish** to match team conventions.
 
-Optional AI playbooks live in [`docs/agent/`](docs/agent/README.md). They are not required to run tests.
+Optional AI playbooks live in [`docs/agent/`](docs/agent/README.md). They are not required to run tests. MCP setup: [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md).
 
 ## Architecture
 
+**Core** (works without Azure, CI vendor, or a real app in demo mode):
+
 ```
-Azure Test Plans ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► device
-        ▲                                                                            │
-        └──────────────────── publish-results.js ◄───────────────────────────────────┘
+features ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► device
+                  │
+                  └──► reports/summary.json + junit.xml
+```
+
+**Optional — Azure Test Plans publish** (omit `--no-publish` and configure `.env`):
+
+```
+Azure Test Plans ──► gherkin-runner.js ──► … ──► device
+        ▲                                              │
+        └──────── publish-results.js ◄─────────────────┘
 ```
 
 - **Features** (`maestro/features/*.feature`) — scenarios in Gherkin (Spanish).
@@ -24,6 +34,16 @@ Azure Test Plans ──► gherkin-runner.js ──► step-definitions/ ──�
 - **Runner** (`maestro/scripts/gherkin-runner.js`) — parses features, resolves steps,
   runs the flows on device, and (unless `--no-publish`) publishes results to Azure.
 
+## Optional authoring (AI)
+
+Not required for `npm run check`. When automating from a TMS ticket:
+
+```
+ticket → test-planner → e2e-specs/specs/<id>.md → author-e2e-test → maestro/
+```
+
+Specs: [`e2e-specs/`](e2e-specs/README.md). Playbooks: [`docs/agent/`](docs/agent/README.md).
+
 ## Demo scenarios (template)
 
 | Feature | Pattern |
@@ -32,8 +52,9 @@ Azure Test Plans ──► gherkin-runner.js ──► step-definitions/ ──�
 | `DemoLogin.feature` | Shared flow with params (`USERNAME`, `PASSWORD`) |
 | `DemoAndroidMenu.feature` | Android-only flow |
 | `DemoIosTabs.feature` | iOS-only flow |
+| `DemoGherkinStructures.feature` | Background + Scenario Outline (expanded pickles) |
 
-Tras hacer fork, sustituye los demos por tests reales — ver [README](README.md#tras-crear-tu-proyecto).
+After fork, replace demos with real tests — see [README § Tras crear tu proyecto](README.md#tras-crear-tu-proyecto).
 
 ## Conventions
 
@@ -53,17 +74,18 @@ Tras hacer fork, sustituye los demos por tests reales — ver [README](README.md
 
 ## Environment
 
-- Config lives in `.env` (copy from `.env.example`). Key vars: `AZURE_DEVOPS_PAT`,
-  `AZURE_DEVOPS_ORG`, `AZURE_DEVOPS_PROJECT`, `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID`
-  (`PLAN_ID` / `SUITE_ID` legacy aliases), `ANDROID_APP_ID`,
-  `IOS_APP_ID`, `ANDROID_APP_NAME`, `IOS_APP_NAME`, `PLATFORM`, `USERNAME`, `PASSWORD`.
-- **`APP_SOURCE_DIR`** — the local app checkout for selector discovery. Override in `.env`.
+- Config lives in `.env` (copy from `.env.example`).
+- **Core:** `ANDROID_APP_ID`, `IOS_APP_ID`, `ANDROID_APP_NAME`, `IOS_APP_NAME`, `PLATFORM`,
+  `USERNAME`, `PASSWORD`, `APP_SOURCE_DIR` (local app checkout for selector discovery).
+- **Azure (optional):** `AZURE_DEVOPS_PAT`, `AZURE_DEVOPS_ORG`, `AZURE_DEVOPS_PROJECT`,
+  `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID` (`PLAN_ID` / `SUITE_ID` legacy aliases).
+  Omit the whole block if you do not publish to Test Plans.
 
 ## Running tests
 
 ```bash
 npm run setup                                              # bootstrap (env + deps + Maestro + doctor)
-npm run check                                              # headless CI gate
+npm run check                                              # headless CI gate (test + validate + gherkin-extract)
 npm run validate                                           # static check, no device needed
 npm run doctor                                             # preflight: deps, Maestro, devices, PAT
 npm run feature -- --feature maestro/features/DemoLogin.feature --platform ios --no-publish
@@ -76,5 +98,6 @@ npm run gherkin-report                                     # Gherkin dictionary 
 
 ## Guardrails
 
-- Always run `npm run validate` after editing features/step-defs/flows.
-- Always run `npm run gherkin-extract` after changing Gherkin or step definitions.
+- After editing features, step-definitions, or flows, run **`npm run check`** (preferred CI gate).
+- If you only touched Gherkin or step-def patterns, at minimum run `npm run validate` and
+  `npm run gherkin-extract` (both are included in `npm run check`).

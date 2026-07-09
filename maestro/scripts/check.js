@@ -12,15 +12,19 @@ const { extractGherkinData } = require('./gherkin-dictionary/lib/extractGherkinD
 
 const ROOT = path.join(__dirname, '..', '..')
 
-const TEST_FILES = [
-  'maestro/scripts/lib/gherkin.test.js',
-  'maestro/scripts/lib/step-defs.test.js',
-  'maestro/scripts/lib/write-reports.test.js',
-]
+/** Same files as `npm test` in package.json — keep in sync by parsing the script. */
+function getTestFilesFromPackage() {
+  const { scripts } = require(path.join(ROOT, 'package.json'))
+  const testScript = scripts?.test
+  if (!testScript?.startsWith('node --test ')) {
+    throw new Error('package.json scripts.test must start with "node --test "')
+  }
+  return testScript.slice('node --test '.length).split(/\s+/).filter(Boolean)
+}
 
 async function main() {
   console.log('\n=== npm test ===')
-  execFileSync(process.execPath, ['--test', ...TEST_FILES], {
+  execFileSync(process.execPath, ['--test', ...getTestFilesFromPackage()], {
     cwd: ROOT,
     stdio: 'inherit',
   })
