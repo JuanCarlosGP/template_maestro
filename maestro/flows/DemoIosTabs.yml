@@ -1,6 +1,0 @@
-appId: ${APP_ID}
-name: DemoIosTabs
----
-# Plantilla: flow específico de iOS
-- runFlow:
-    file: ../ios/DemoIosTabs.yml

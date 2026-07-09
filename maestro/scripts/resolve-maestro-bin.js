@@ -32,9 +32,10 @@ function resolveMaestroBinary() {
     /* which no encontró maestro */
   }
 
-  const home = process.env.HOME || ''
+  const home = process.env.HOME || process.env.USERPROFILE || ''
   const candidates = [
     path.join(home, '.maestro', 'bin', 'maestro'),
+    path.join(home, '.maestro', 'bin', 'maestro.bat'),
   ]
   for (const p of candidates) {
     if (p && fs.existsSync(p)) return p
@@ -129,15 +130,11 @@ function buildMaestroTestArgs(platform, maestroWorkspaceDir) {
 }
 
 /**
- * Formato `--env` de Maestro. Valores con espacios: KEY="valor con espacios"
- * (ver mobile-dev-inc/Maestro#1726).
+ * Formato `--env` de Maestro. Con execFileSync cada flag es un argv distinto;
+ * no hace falta escapar espacios con comillas (Maestro recibe TEXT=valor con espacios tal cual).
  */
 function formatMaestroEnvArg(key, value) {
-  const s = String(value)
-  if (/[\s"]/.test(s)) {
-    return `${key}="${s.replace(/"/g, '\\"')}"`
-  }
-  return `${key}=${s}`
+  return `${key}=${String(value)}`
 }
 
 /** Añade flags `--env` al comando Maestro. */
@@ -159,6 +156,10 @@ function execMaestroSync(maestroArgs, extraOpts) {
       ...process.env,
       ...(extra.env || {}),
     },
+  }
+  if (process.platform === 'win32' && maestroBin.toLowerCase().endsWith('.bat')) {
+    execFileSync('cmd.exe', ['/d', '/s', '/c', maestroBin, ...maestroArgs], opts)
+    return
   }
   execFileSync(maestroBin, maestroArgs, opts)
 }

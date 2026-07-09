@@ -37,8 +37,8 @@ describe('validate-step-defs', () => {
     assert.ok(problems.some(p => p.includes('capture group')))
   })
 
-  it('validates demo-login.json', () => {
-    const filePath = path.join(__dirname, '..', '..', 'step-definitions', 'demo-login.json')
+  it('validates appium-practice.json', () => {
+    const filePath = path.join(__dirname, '..', '..', 'step-definitions', 'appium-practice.json')
     const problems = validateStepDefinitionsFile(filePath)
     assert.deepEqual(problems, [])
   })
@@ -57,14 +57,16 @@ describe('validate-step-defs', () => {
   })
 })
 
-describe('demo-login step patterns', () => {
-  const loginStep = 'inicio sesión con usuario "demo_user" y clave "demo_pass"'
+describe('appium-practice step patterns', () => {
+  const loginStep =
+    'entro en "12 EXPAND BANK" e inicio sesión con usuario "practice" y clave "practice"'
 
-  it('matches parameterized login step', () => {
+  it('matches parameterized expand bank login step', () => {
     const resolved = resolveStep(loginStep)
-    assert.equal(resolved.flow, 'DemoLogin')
-    assert.equal(resolved.params.USERNAME, 'demo_user')
-    assert.equal(resolved.params.PASSWORD, 'demo_pass')
+    assert.equal(resolved.flow, 'ExpandBankLoginForm')
+    assert.equal(resolved.params.SECTION, '12 EXPAND BANK')
+    assert.equal(resolved.params.USERNAME, 'practice')
+    assert.equal(resolved.params.PASSWORD, 'practice')
   })
 
   it('does not match unrelated text', () => {

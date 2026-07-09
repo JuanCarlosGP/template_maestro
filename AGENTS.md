@@ -44,21 +44,17 @@ ticket → environment-scout → test-planner → e2e-specs/specs/<id>.md → au
 
 Specs: [`e2e-specs/`](e2e-specs/README.md). Orchestration: [`docs/agent/workflow.md`](docs/agent/workflow.md).
 
-## Demo scenarios (template)
+## Example scenario (Appium Practice)
 
 | Feature | Pattern |
 | ------- | ------- |
-| `DemoOnboarding.feature` | Platform split via `flows/` → `android/` / `ios/` |
-| `DemoLogin.feature` | Shared flow with params (`USERNAME`, `PASSWORD`) |
-| `DemoAndroidMenu.feature` | Android-only flow |
-| `DemoIosTabs.feature` | iOS-only flow |
-| `DemoGherkinStructures.feature` | Background + Scenario Outline (expanded pickles) |
+| `AppiumPracticeExpandBank.feature` | Android login in **12 EXPAND BANK**; parameterized Gherkin → `ExpandBankLoginForm` |
 
-After fork, replace demos with real tests — see [README § Tras crear tu proyecto](README.md#tras-crear-tu-proyecto).
+After fork, add tests for your app using the same layout — see [README § Tras crear tu proyecto](README.md#tras-crear-tu-proyecto).
 
 ## Conventions
 
-- **One JSON per feature area** in `step-definitions/` (e.g. `demo-login.json`).
+- **One JSON per feature area** in `step-definitions/` (e.g. `appium-practice.json`).
   Add a new file for a new area — do not bloat existing ones.
 - **Longest matching pattern wins.** Among all step definitions that match a Gherkin step,
   the runner picks the one with the longest `pattern`. Files load alphabetically, but array
@@ -88,9 +84,9 @@ npm run setup                                              # bootstrap (env + de
 npm run check                                              # headless CI gate (test + validate + gherkin-extract)
 npm run validate                                           # static check, no device needed
 npm run doctor                                             # preflight: deps, Maestro, devices, PAT
-npm run feature -- --feature maestro/features/DemoLogin.feature --platform ios --no-publish
-npm run flow:ios -- --flow maestro/flows/DemoLogin.yml     # direct flow, no runner
-npm run flow:android -- --flow maestro/flows/DemoLogin.yml
+npm run feature:expand-bank-login                          # example (Android, no publish)
+npm run feature -- --feature maestro/features/<Area>.feature --platform android --no-publish
+npm run flow:android -- --flow maestro/flows/<Flow>.yml    # direct flow, no runner
 npm run gherkin-report                                     # Gherkin dictionary UI
 ```
 

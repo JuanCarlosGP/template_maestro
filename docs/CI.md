@@ -24,7 +24,9 @@ npm run check
 Run on a macOS/Linux agent with a booted simulator/emulator and the app installed:
 
 ```bash
-npm run feature -- --feature maestro/features/DemoLogin.feature --platform android --no-publish
+npm run feature:expand-bank-login
+# o:
+npm run feature -- --feature maestro/features/AppiumPracticeExpandBank.feature --platform android --no-publish
 ```
 
 Publish execution artifacts from the run (see below).

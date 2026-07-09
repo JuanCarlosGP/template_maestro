@@ -25,10 +25,9 @@ npm run setup
 npm run check
 npm run validate
 npm run doctor
-npm run demo-login
-npm run feature -- --feature maestro/features/DemoLogin.feature --platform ios --no-publish
-npm run flow:android -- --flow maestro/flows/DemoLogin.yml
-npm run flow:ios -- --flow maestro/flows/DemoLogin.yml
+npm run feature:expand-bank-login
+npm run feature -- --feature maestro/features/AppiumPracticeExpandBank.feature --platform android --no-publish
+npm run flow:android -- --flow maestro/flows/ExpandBankLoginForm.yml
 npm run gherkin-extract
 npm run gherkin-report
 ```

@@ -1,0 +1,21 @@
+{
+  "steps": [
+    {
+      "pattern": "abro Appium Practice en la pantalla principal",
+      "flow": "ExpandBankOpenApp",
+      "description": "Launch Appium Practice with clear app state"
+    },
+    {
+      "pattern": "veo el texto \"(.+)\"",
+      "params": ["TEXT"],
+      "flow": "AssertVisibleText",
+      "description": "Assert visible copy on screen"
+    },
+    {
+      "pattern": "entro en \"(.+)\" e inicio sesión con usuario \"(.+)\" y clave \"(.+)\"",
+      "params": ["SECTION", "USERNAME", "PASSWORD"],
+      "flow": "ExpandBankLoginForm",
+      "description": "Open bank section and submit login form"
+    }
+  ]
+}

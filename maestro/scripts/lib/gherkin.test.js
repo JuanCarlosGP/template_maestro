@@ -99,10 +99,10 @@ describe('gherkin lib', () => {
   })
 })
 
-describe('DemoGherkinStructures.feature', () => {
-  it('produces three executable pickles', () => {
-    const filePath = path.join(__dirname, '..', '..', 'features', 'DemoGherkinStructures.feature')
+describe('AppiumPracticeExpandBank.feature', () => {
+  it('produces one executable pickle', () => {
+    const filePath = path.join(__dirname, '..', '..', 'features', 'AppiumPracticeExpandBank.feature')
     const pickles = getPickles(filePath)
-    assert.equal(pickles.length, 3)
+    assert.equal(pickles.length, 1)
   })
 })

@@ -2,7 +2,7 @@
 
 **Versión:** 0.3.3
 
-Plantilla del framework de tests E2E con **Maestro** y **Gherkin**. Incluye escenarios demo ficticios que ilustran el patrón shared / Android / iOS. Sustituye los demos por tests reales de tu app.
+Plantilla del framework de tests E2E con **Maestro** y **Gherkin**. Incluye un escenario de ejemplo contra **[Appium Practice](https://play.google.com/store/apps/details?id=com.expandtesting.practice)** (Android). Sustituye o amplía con tests de tu app.
 
 ## Stack
 
@@ -17,7 +17,7 @@ Plantilla del framework de tests E2E con **Maestro** y **Gherkin**. Incluye esce
 
 ### Core (siempre)
 
-Gherkin, step-definitions, flows Maestro, runner y validación estática. Funciona sin Azure, sin CI concreto y sin app real (modo demo).
+Gherkin, step-definitions, flows Maestro, runner y validación estática. Funciona sin Azure ni CI concreto; el ejemplo incluido requiere dispositivo Android con Appium Practice instalada.
 
 ```
 features/ ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► dispositivo
@@ -169,36 +169,30 @@ Plantilla: `[.env.example](.env.example)` — bloques **Core**, **Reporting**, *
 
 
 
-## Escenarios demo incluidos
+## Escenario de ejemplo (Appium Practice)
 
+App real en Play Store — Android. Ilustra Gherkin parametrizado, flows en `android/` y asserts reutilizables.
 
-| Feature                         | Tipo                   | Flow                                             |
-| ------------------------------- | ---------------------- | ------------------------------------------------ |
-| `DemoOnboarding.feature`        | Shared (Android + iOS) | `flows/DemoOnboarding.yml` → `android/` / `ios/` |
-| `DemoLogin.feature`             | Shared                 | `flows/DemoLogin.yml` → `shared/DemoLogin.yml`   |
-| `DemoAndroidMenu.feature`       | Android                | `flows/DemoAndroidMenu.yml` → `android/`         |
-| `DemoIosTabs.feature`           | iOS                    | `flows/DemoIosTabs.yml` → `ios/`                 |
-| `DemoGherkinStructures.feature` | Background + Outline   | Pickles expandidos (3 ejecuciones)               |
+| Feature | Descripción | Ejecución rápida |
+|---------|-------------|------------------|
+| `AppiumPracticeExpandBank.feature` | Login en **12 EXPAND BANK** (`practice` / `practice`) → texto **Logout** | `npm run feature:expand-bank-login` |
 
+**Prerrequisitos:** dispositivo o emulador Android, [Appium Practice](https://play.google.com/store/apps/details?id=com.expandtesting.practice) instalada, `.env` con `ANDROID_APP_ID=com.expandtesting.practice` y `ANDROID_SERIAL` si aplica. Ver [`docs/DEVICE.md`](docs/DEVICE.md).
 
 ---
 
-
-
 ## Tras crear tu proyecto
 
-Al hacer fork de la template, sustituye los demos por tests de tu app:
+Al hacer fork de la template, añade tests de **tu** app siguiendo el mismo patrón que el ejemplo Expand Bank:
 
+| Acción | Qué hacer |
+|--------|-----------|
+| **Añadir** | `features/`, `step-definitions/<area>.json`, flows en `flows/` (+ `android/` / `ios/` si aplica) |
+| **Configurar** | `.env` (app IDs, `APP_SOURCE_DIR`, `ANDROID_SERIAL`); Azure solo si publicas en Test Plans |
+| **Conservar** | Estructura de carpetas, `npm run check`, ejemplos CI en [`integrations/`](integrations/README.md) |
+| **Opcional** | Agente IA: `docs/agent/`, `e2e-specs/`, [`.mcp.json`](.mcp.json) + [`mcp-examples.md`](docs/agent/mcp-examples.md); BrowserStack; publicación Azure |
 
-| Acción         | Qué hacer                                                                                                                                           |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Sustituir**  | `Demo*.feature`, `demo-*.json` en `step-definitions/`, flows `Demo`* en `flows/`, `shared/`, `android/` e `ios/`                                    |
-| **Configurar** | `.env` (app IDs, `APP_SOURCE_DIR`, credenciales); Azure solo si publicas en Test Plans                                                              |
-| **Conservar**  | Estructura de carpetas, `npm run check`, ejemplos CI en `[integrations/](integrations/README.md)`                                                   |
-| **Opcional**   | Agente IA: `docs/agent/`, `e2e-specs/`, [`.mcp.json`](.mcp.json) + [`mcp-examples.md`](docs/agent/mcp-examples.md); BrowserStack; publicación Azure |
-
-
-Para el primer escenario real, sigue [Añadir un test real](#añadir-un-test-real).
+Pipeline agente: [`docs/agent/workflow.md`](docs/agent/workflow.md).
 
 ---
 
@@ -207,21 +201,20 @@ Para el primer escenario real, sigue [Añadir un test real](#añadir-un-test-rea
 ## Ejecución
 
 ```bash
-npm run check          # gate headless (preferido tras cambios)
+npm run check                        # gate headless (preferido tras cambios)
 npm test
 npm run validate
 npm run doctor
-npm run demo-login
-npm run feature -- --feature maestro/features/DemoLogin.feature --platform ios --no-publish
-npm run flow:android -- --flow maestro/flows/DemoLogin.yml
-npm run flow:ios -- --flow maestro/flows/DemoLogin.yml
+npm run feature:expand-bank-login    # ejemplo Appium Practice (Android, sin Azure)
+npm run feature -- --feature maestro/features/<TuFeature>.feature --platform android --no-publish
+npm run flow:android -- --flow maestro/flows/<TuFlow>.yml
 npm run gherkin-extract
 npm run gherkin-report
 ```
 
-Tras un run con el runner, revisa `reports/summary.json` y `reports/junit.xml` (desactivar con `--no-reports`).
+Pasa `--no-publish` al runner para no publicar en Azure (valor por defecto en `feature:expand-bank-login`).
 
-Pasa `--no-publish` al runner para no publicar en Azure (valor por defecto en los scripts demo).
+Tras un run con el runner, revisa `reports/summary.json` y `reports/junit.xml` (desactivar con `--no-reports`).
 
 Suite completa desde Azure Test Plans (opcional):
 
@@ -254,12 +247,32 @@ npm run gherkin-extract     # solo regenera JSON/CSV
 
 ---
 
+## Editor (VS Code / Cursor)
 
+Los pasos Gherkin se resuelven en **`maestro/step-definitions/*.json`**, no en `.js`/`.ts`. La extensión **Cucumber (oficial)** marca pasos como *Undefined step* aunque `npm run validate` esté en verde.
+
+El workspace incluye [`.vscode/extensions.json`](.vscode/extensions.json):
+
+| Extensión | ID | Uso |
+|-----------|-----|-----|
+| **Cucumber (Gherkin) Syntax and Snippets** | `stevejpurves.cucumber` | Recomendada — resaltado y snippets |
+| **Cucumber (oficial)** | `CucumberOpen.cucumber-official` | No recomendada en este template |
+
+Al abrir el repo, Cursor/VS Code puede sugerir instalar la extensión ligera.
+
+**Importante:** si tienes instalada **Cucumber (oficial)** (`CucumberOpen.cucumber-official`), desactívala en este workspace: Extensions → *Cucumber* → **Disable (Workspace)**. El reload solo no la quita; `unwantedRecommendations` no la desinstala.
+
+El workspace asocia `*.feature` al lenguaje `feature` (extensión `stevejpurves.cucumber`), no a `cucumber` (oficial). Si el aviso *Undefined step* sigue, es porque la oficial sigue activa.
+
+Comprobación fiable de pasos: `npm run validate` o `npm run gherkin-report`.
+
+---
 
 ## Estructura del proyecto
 
 ```text
 izertis-maestro-template/
+├── .vscode/               # extensión Gherkin recomendada (ver README § Editor)
 ├── .env.example           # plantilla de configuración (copiar a .env)
 ├── .mcp.json              # MCP maestro (TMS opcional — ver docs/agent/mcp-examples.md)
 ├── AGENTS.md              # reglas para agentes IA
