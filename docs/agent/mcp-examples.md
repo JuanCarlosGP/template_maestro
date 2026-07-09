@@ -13,9 +13,10 @@ Related: [agent playbooks](README.md) · [`e2e-specs/`](../../e2e-specs/README.m
 | Workflow | MCP in `.mcp.json` | Section below |
 |----------|-------------------|---------------|
 | CI / static validation (`npm run check`) | None extra | — |
-| Plan automation from a ticket | **One** TMS: `azure-devops`, `github`, or `gitlab` | [TMS blocks](#rule-one-tms-at-a-time) |
+| **Issue → test (full pipeline)** | `maestro` + optional TMS | [`workflow.md`](workflow.md) |
+| Plan automation from a ticket | **One** TMS + `maestro` | [TMS blocks](#rule-one-tms-at-a-time) |
 | Explore selectors on device | `maestro` (already included) | [`maestro`](#maestro-live-device) |
-| Author or debug flows live | `maestro` + optional TMS | both |
+| Author or debug flows live | `maestro` + TMS optional | both |
 | Paste Gherkin into the agent only | `maestro` enough (or no MCP) | — |
 
 ## Quick rules

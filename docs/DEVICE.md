@@ -6,6 +6,18 @@ This page documents **manual platform commands** for local device work on macOS/
 
 Requires `.env` filled in (see [`.env.example`](../.env.example)).
 
+## Agent authoring prerequisites
+
+The issue → plan → test pipeline ([`docs/agent/workflow.md`](agent/workflow.md)) needs a **booted device** and the **app installed** before **environment-scout** and device runs:
+
+| Step | Requirement |
+|------|-------------|
+| environment-scout | `maestro` MCP + simulator/emulator + app |
+| author-e2e-test (execute) | Same + `npm run doctor` green for target platform |
+| Headless only | `npm run check` — no device |
+
+Install Maestro MCP in [`.mcp.json`](../.mcp.json); TMS optional — [`docs/agent/mcp-examples.md`](agent/mcp-examples.md).
+
 ## npm — tests and quality
 
 ```bash

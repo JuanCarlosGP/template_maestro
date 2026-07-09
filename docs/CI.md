@@ -1,6 +1,8 @@
 # CI — Izertis Maestro Template
 
-This template does **not** ship an official pipeline. Use any CI that can run Node 20 and shell commands. Copy an example from [`integrations/`](../integrations/) or wire the contract below into your client's stack.
+This template does **not** ship an official pipeline. Use any CI that can run Node 20 and shell commands. Copy an example from [`integrations/`](../integrations/README.md) or wire the contract below into your client's stack.
+
+Agent-authored tests follow [`docs/agent/workflow.md`](agent/workflow.md); CI typically gates **static** quality on every PR and **device** runs separately.
 
 ## Headless gate (every PR)
 

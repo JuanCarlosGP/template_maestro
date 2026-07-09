@@ -1,32 +1,39 @@
 # e2e-specs — automation planning specs
 
-A lightweight, convention-based spec folder for the **Izertis Maestro Template**. **Not
-an npm package** and **not** [OpenSpec](https://openspec.dev/) — just structured markdown
-plus optional agent playbooks.
+Structured markdown specs for the **Izertis Maestro Template**. **Not** [OpenSpec](https://openspec.dev/) — planning artifacts for the agent pipeline.
 
-Each spec is the **source of truth for automating one ticket / test case**: it captures the
-Gherkin, the automation plan, per-platform notes, and decisions that otherwise vanish into
-chat (selector strategy, dropped scenarios and *why*, whether an MSW dev build was needed).
+Each spec is the **source of truth for one issue / HU**: acceptance criteria, environment recon, Gherkin, automation plan, sanity traceability, and final outcome.
 
 ## Layout
 
 ```
 e2e-specs/
 └── specs/
-    └── <id>.md     # Azure work item, GitHub Issue number, or manual slug
+    └── <id>.md     # Issue #, work item ID, or manual slug
 ```
 
 ## Workflow
 
-1. Start from [`docs/agent/author-e2e-test/`](../docs/agent/author-e2e-test/SKILL.md) with a ticket ID and Gherkin.
-2. The **test-planner** agent ([`docs/agent/agents/test-planner.md`](../docs/agent/agents/test-planner.md)) reads the ticket (Azure, GitHub, or GitLab MCP — or pasted Gherkin),
-   existing flows, and app source, then writes `e2e-specs/specs/<id>.md`.
-3. The spec becomes the source of truth for building flows and records the final outcome (Automated / Dropped / MSW).
+Full pipeline: [`docs/agent/workflow.md`](../docs/agent/workflow.md).
 
-## Spec format
+1. **environment-scout** — Maestro MCP recon on live device
+2. **test-planner** — writes `e2e-specs/specs/<id>.md` from issue + scout report
+3. **User confirms** the plan
+4. **author-e2e-test** — builds `maestro/**`, runs until green
+5. **sanity-reviewer** — maps test back to HU criteria; fills **Sanity (post-ejecución)**
+6. **Gate / Resultado** updated; optional **committing**
 
-See [specs/demo-onboarding.md](specs/demo-onboarding.md) for a worked example. Sections: metadata header,
-Objetivo, Escenarios (Gherkin), Plan de automatización, Cobertura por plataforma,
-Selectores clave, Decisiones, Casos límite, Fuera de alcance, Riesgos/Notas, Gate/Resultado.
-Keep content in **Spanish** (matching the ticket and app UI); write `(ninguno)` for an
-empty section rather than omitting it.
+Entry: [`docs/agent/author-e2e-test/SKILL.md`](../docs/agent/author-e2e-test/SKILL.md).
+
+## Spec sections
+
+| Section | Who fills it |
+|---------|----------------|
+| Objetivo, Criterios de aceptación | test-planner |
+| Reconocimiento del entorno | environment-scout → test-planner |
+| Escenarios (Gherkin) | test-planner |
+| Plan de automatización, Selectores, Decisiones | test-planner |
+| Sanity (post-ejecución) | sanity-reviewer (after green run) |
+| Gate / Resultado | author-e2e-test |
+
+See [specs/demo-onboarding.md](specs/demo-onboarding.md). Content in **Spanish**; use `(ninguno)` for empty sections.

@@ -4,7 +4,7 @@ E2E test **framework template** by **Izertis**, driven by **Maestro** and **Gher
 
 Harness prose is in English; **generated test output (Gherkin scenarios, branch slugs) stays in Spanish** to match team conventions.
 
-Optional AI playbooks live in [`docs/agent/`](docs/agent/README.md). They are not required to run tests. MCP setup: [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md).
+Optional AI playbooks live in [`docs/agent/`](docs/agent/README.md). End-to-end flow: [`docs/agent/workflow.md`](docs/agent/workflow.md) (issue → scout → plan → author → sanity). MCP setup: [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md).
 
 ## Architecture
 
@@ -39,10 +39,10 @@ Azure Test Plans ──► gherkin-runner.js ──► … ──► device
 Not required for `npm run check`. When automating from a TMS ticket:
 
 ```
-ticket → test-planner → e2e-specs/specs/<id>.md → author-e2e-test → maestro/
+ticket → environment-scout → test-planner → e2e-specs/specs/<id>.md → author-e2e-test → sanity-reviewer → maestro/
 ```
 
-Specs: [`e2e-specs/`](e2e-specs/README.md). Playbooks: [`docs/agent/`](docs/agent/README.md).
+Specs: [`e2e-specs/`](e2e-specs/README.md). Orchestration: [`docs/agent/workflow.md`](docs/agent/workflow.md).
 
 ## Demo scenarios (template)
 

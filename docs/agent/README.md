@@ -2,50 +2,55 @@
 
 Neutral markdown playbooks for **AI-assisted E2E authoring**. Not required to run tests — the official contract is **npm** (`npm run check`, `npm run feature`, …).
 
+## End-to-end workflow (issue → green → sanity)
+
+**Start here:** [`workflow.md`](workflow.md) · entry playbook [`author-e2e-test/SKILL.md`](author-e2e-test/SKILL.md)
+
+```
+issue/HU → environment-scout → test-planner → [confirm] → author → sanity-reviewer → commit?
+```
+
 ## Contents
 
-| Path | Purpose |
-|------|---------|
-| [`author-e2e-test/`](author-e2e-test/SKILL.md) | Automate a test case from a TMS ticket + Gherkin |
-| [`debug-flow/`](debug-flow/SKILL.md) | Fix a failing feature or flow |
-| [`run-tests-e2e/`](run-tests-e2e/SKILL.md) | Validate, smoke-test, run on device |
-| [`committing/`](committing/SKILL.md) | Branch, commit, draft PR |
-| [`agents/test-planner.md`](agents/test-planner.md) | Plan before building (writes `e2e-specs/specs/<id>.md`) |
-| [`agents/selector-explorer.md`](agents/selector-explorer.md) | Discover selectors on live device + app source |
+| Path | Phase | Purpose |
+|------|-------|---------|
+| [`workflow.md`](workflow.md) | — | Full pipeline orchestration |
+| [`author-e2e-test/`](author-e2e-test/SKILL.md) | All | **Entry point** — runs the pipeline |
+| [`agents/environment-scout.md`](agents/environment-scout.md) | 1 | Live app recon via Maestro MCP |
+| [`agents/test-planner.md`](agents/test-planner.md) | 2 | Writes `e2e-specs/specs/<id>.md` |
+| [`agents/selector-explorer.md`](agents/selector-explorer.md) | 4 | Selectors on device + source |
+| [`agents/sanity-reviewer.md`](agents/sanity-reviewer.md) | 6 | Post-green HU traceability |
+| [`debug-flow/`](debug-flow/SKILL.md) | — | Fix failing tests (not new authoring) |
+| [`run-tests-e2e/`](run-tests-e2e/SKILL.md) | — | Headless smoke / device runs |
+| [`committing/`](committing/SKILL.md) | 8 | Draft PR |
 
 Related:
 
-- [`e2e-specs/`](../../e2e-specs/README.md) — automation planning specs (not [OpenSpec](https://openspec.dev/))
-- [`.mcp.json`](../../.mcp.json) — **`maestro` only** by default — see [MCP setup](#mcp-mcpjson) below
-- [`mcp-examples.md`](mcp-examples.md) — workflow guide + copy-paste JSON (Azure DevOps, GitHub, GitLab)
-- [`AGENTS.md`](../../AGENTS.md) — project rules for any coding agent
+- [`e2e-specs/`](../../e2e-specs/README.md) — planning specs per ticket
+- [`.mcp.json`](../../.mcp.json) — **`maestro` only** by default — see [MCP setup](#mcp-mcpjson)
+- [`mcp-examples.md`](mcp-examples.md) — TMS blocks (Azure, GitHub, GitLab)
+- [`docs/README.md`](../README.md) — CI, DEVICE, index
+- [`AGENTS.md`](../../AGENTS.md) — project rules
 
 ## MCP (`.mcp.json`)
 
-Optional. **Not used by `npm run check` or CI** — only for AI-assisted authoring (ticket fetch + live device when needed).
+Optional. **Not used by `npm run check` or CI**.
 
-The template ships **only `maestro`** so the IDE opens without TMS auth errors. Add a TMS block when you need ticket/Gherkin fetch — see [`mcp-examples.md`](mcp-examples.md).
+| Server | Workflow step | Required? |
+|--------|---------------|-----------|
+| **`maestro`** | environment-scout, selector-explorer, debug | **Yes** for live authoring |
+| **`azure-devops`** / **`github`** / **`gitlab`** | Fetch issue / Gherkin | One TMS optional — [`mcp-examples.md`](mcp-examples.md) |
 
-| Server | Purpose | Required? |
-|--------|---------|-----------|
-| **`maestro`** | Inspect screen, run flows, screenshots (`selector-explorer`, debug in `author-e2e-test`) | Only for live-device authoring |
-| **`azure-devops`** | Read Azure DevOps work items / test cases and extract Gherkin | Only if tickets live in Azure DevOps |
-| **`github`** | Read GitHub Issues / PRs (Gherkin in issue body) | Only if tickets live on GitHub — see [`mcp-examples.md`](mcp-examples.md) |
-| **`gitlab`** | Read GitLab issues / MRs | Only if tickets live on GitLab — see [`mcp-examples.md`](mcp-examples.md) |
-
-**Use one TMS block at a time.** After fork, keep `maestro` and paste **one** TMS block from [`mcp-examples.md`](mcp-examples.md), or skip TMS and paste Gherkin manually.
+Ships **only `maestro`** so the IDE opens cleanly. Add one TMS block when automating from tickets.
 
 ### Personalize after fork
 
-1. **`maestro`** — Default path is Unix/macOS/WSL: `${HOME}/.maestro/bin/maestro`. On **Windows native**, point `command` at your Maestro binary, e.g. `${USERPROFILE}\\.maestro\\bin\\maestro.bat` (install manually; see [Maestro docs](https://docs.maestro.dev/getting-started/installing-maestro)).
-2. **TMS (pick one)** — Workflow + JSON snippets: [`mcp-examples.md`](mcp-examples.md).
-3. **No TMS MCP** — `test-planner` and `author-e2e-test` accept pasted Gherkin; `gh` / `glab` CLI also work.
-4. **Auth** — Azure MCP uses **interactive browser login** (not `AZURE_DEVOPS_PAT` in `.env`). GitHub uses a PAT. GitLab uses OAuth. `.env` secrets are for the test runner (`publish-results.js`, credentials), not IDE MCP.
+1. **`maestro`** — `${HOME}/.maestro/bin/maestro` (Unix); Windows: `${USERPROFILE}\\.maestro\\bin\\maestro.bat`
+2. **TMS** — [`mcp-examples.md`](mcp-examples.md)
+3. **No TMS** — paste issue + Gherkin; scout + planner still work
 
 ## Use with your IDE
 
-These files are plain markdown — **no vendor-specific wiring in this repo**. Point your agent at `docs/agent/<playbook>/SKILL.md` and [`AGENTS.md`](../../AGENTS.md). Optionally symlink playbooks into your IDE's skills folder (local setup, not tracked in git).
+Point your agent at [`author-e2e-test/SKILL.md`](author-e2e-test/SKILL.md) with an issue ID, or at individual agents for a single step.
 
-Optional quality hooks: [`maestro/scripts/hooks/`](../../maestro/scripts/hooks/README.md) — wire in your IDE if it supports post-edit commands.
-
-Extra playbooks can live in your **personal** IDE skills folder, not in this repo.
+Optional hooks: [`maestro/scripts/hooks/`](../../maestro/scripts/hooks/README.md).

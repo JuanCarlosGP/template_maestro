@@ -13,7 +13,8 @@ PR yourself.
 
 1. `git status` and `git diff` to see what changed. Confirm `npm run validate`
    passes if features/step-defs/flows were touched.
-2. **Never stage secrets** — no real `USERNAME`/`PASSWORD`/`AZURE_DEVOPS_PAT` in tracked
+2. For **new issue-driven tests**, confirm `e2e-specs/specs/<id>.md` has **Sanity (post-ejecución)** OK (or user accepted gaps) per [`workflow.md`](../workflow.md).
+3. **Never stage secrets** — no real `USERNAME`/`PASSWORD`/`AZURE_DEVOPS_PAT` in tracked
    files (the pre-write hook guards this if configured; double-check `.env` is not staged).
 3. Identify the **ticket ID** in play (from the user, the branch, or the originating
    author-e2e-test / debug-flow run).

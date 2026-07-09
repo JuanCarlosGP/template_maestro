@@ -56,3 +56,5 @@ automation, or switching to a dev build against **MSW** (`environment=mock`,
 Once green on the affected platform(s), invoke the **committing** playbook ([`docs/agent/committing/SKILL.md`](../committing/SKILL.md)) to branch,
 commit, push, and open a **draft** PR. Summarise the root cause and the fix
 in the commit/PR description.
+
+For **new** tests from an issue, use the full pipeline in [`workflow.md`](../workflow.md) including **sanity-reviewer** before commit.

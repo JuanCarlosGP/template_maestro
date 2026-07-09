@@ -25,6 +25,8 @@ features/ ──► gherkin-runner.js ──► step-definitions/ ──► flow
                     └──► reports/summary.json + junit.xml  (post-ejecución)
 ```
 
+
+
 ### Calidad portable
 
 ```bash
@@ -33,40 +35,72 @@ npm run validate   # Gherkin, schema step-defs, flows (sin dispositivo)
 npm test           # unit tests del framework
 ```
 
-Detalle CI: [`docs/CI.md`](docs/CI.md). Ejemplos copiables en [`integrations/`](integrations/README.md) (GitHub Actions, Azure Pipelines, GitLab CI).
+Detalle CI: `[docs/CI.md](docs/CI.md)`. Ejemplos copiables en `[integrations/](integrations/README.md)` (GitHub Actions, Azure Pipelines, GitLab CI).
 
 ### Integraciones opcionales (por cliente)
 
-| Integración | Cuándo | Cómo |
-|-------------|--------|------|
-| Azure Test Plans | Cliente usa Azure DevOps QA | `publish-results.js`, vars en `.env`, quitar `--no-publish` |
-| BrowserStack | Ejecución en cloud | `--executor browserstack` |
-| Authoring asistido | Automatizar con agente IA | [`docs/agent/`](docs/agent/README.md), [`e2e-specs/`](e2e-specs/README.md), [`.mcp.json`](.mcp.json) |
 
-### Authoring asistido (opcional)
+| Integración        | Cuándo                      | Cómo                                                                                                 |
+| ------------------ | --------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Azure Test Plans   | Cliente usa Azure DevOps QA | `publish-results.js`, vars en `.env`, quitar `--no-publish`                                          |
+| BrowserStack       | Ejecución en cloud          | `--executor browserstack`                                                                            |
+| Agente IA (issue → test) | Automatizar desde issue/HU | [`docs/agent/`](docs/agent/README.md), [`e2e-specs/`](e2e-specs/README.md), [`.mcp.json`](.mcp.json) |
 
-No necesario para `npm run check` ni CI headless.
+
+
+
+### De la issue al test E2E (agente IA)
+
+Opcional — no necesario para `npm run check` ni CI headless.
 
 ```
-ticket → test-planner → e2e-specs/specs/<id>.md → author-e2e-test → maestro/
+ticket → environment-scout → test-planner → e2e-specs/specs/<id>.md → author-e2e-test → sanity-reviewer
 ```
 
-- **[`docs/agent/`](docs/agent/)** — playbooks neutros (planificar, autorar, depurar tests)
-- **[`e2e-specs/specs/`](e2e-specs/README.md)** — specs de automatización por ticket (no [OpenSpec](https://openspec.dev/))
-- **[`.mcp.json`](.mcp.json)** — solo MCP `maestro` por defecto; TMS opcional (Azure, GitHub, GitLab) → [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md)
+- [`docs/agent/`](docs/agent/) — playbooks; empezar por [`workflow.md`](docs/agent/workflow.md) o [`author-e2e-test`](docs/agent/author-e2e-test/SKILL.md)
+- [`e2e-specs/specs/`](e2e-specs/README.md) — specs de automatización por ticket (no [OpenSpec](https://openspec.dev/))
+- [`.mcp.json`](.mcp.json) — solo MCP `maestro` por defecto; TMS opcional (Azure, GitHub, GitLab) → [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md)
 
 Reglas para agentes: [`AGENTS.md`](AGENTS.md).
 
+#### Usar el agente (rápido)
+
+**Antes:** emulador o simulador con la app instalada, `.env` configurado, MCP `maestro` en [`.mcp.json`](.mcp.json) (TMS opcional para leer la issue — ver [`mcp-examples.md`](docs/agent/mcp-examples.md)).
+
+En Cursor (o tu IDE con agente), pega algo como:
+
+```
+Automatiza la issue #123 siguiendo docs/agent/author-e2e-test/SKILL.md
+```
+
+Sustituye `#123` por tu issue de GitHub/GitLab, work item de Azure o el ID que uses.
+
+**Qué hará el agente:**
+
+1. Inspeccionar la app en dispositivo (Maestro MCP)
+2. Redactar el plan en `e2e-specs/specs/<id>.md` y pedirte confirmación
+3. Crear feature, step-definitions y flows; ejecutar hasta verde
+4. Revisar que el test cubre la HU (sanity)
+5. Opcional: commit y PR en borrador
+
+Detalle del pipeline: [`docs/agent/workflow.md`](docs/agent/workflow.md). Dispositivo: [`docs/DEVICE.md`](docs/DEVICE.md).
+
 ---
+
+
 
 ## Catálogo vs resultados de ejecución
 
-| Herramienta | Momento | Salida |
-|-------------|---------|--------|
-| [`gherkin-dictionary`](maestro/scripts/gherkin-dictionary/) | Estático, sin device | Catálogo paso → step-def → flow |
-| `reports/` (tras `npm run feature`) | Post-ejecución | Pass/fail, errores, JUnit para CI |
+
+| Herramienta                                                 | Momento              | Salida                            |
+| ----------------------------------------------------------- | -------------------- | --------------------------------- |
+| `[gherkin-dictionary](maestro/scripts/gherkin-dictionary/)` | Estático, sin device | Catálogo paso → step-def → flow   |
+| `reports/` (tras `npm run feature`)                         | Post-ejecución       | Pass/fail, errores, JUnit para CI |
+
 
 ---
+
+
 
 ## Requisitos
 
@@ -74,29 +108,35 @@ Reglas para agentes: [`AGENTS.md`](AGENTS.md).
 - **Maestro CLI** — instalado por `npm run setup` en macOS/Linux; en Windows nativo, instalar manualmente ([docs Maestro](https://docs.maestro.dev/getting-started/installing-maestro))
 - Para ejecución en dispositivo: simulador iOS o emulador Android con la app instalada (Android Studio / Xcode)
 
+
+
 ## Compatibilidad por SO
 
 El **contrato del template** es npm + Node 20; funciona en Windows, macOS y Linux. La ejecución en **dispositivo** depende del SO y de la plataforma móvil (iOS solo en macOS de forma local).
 
-| Capa | Windows | macOS | Linux |
-|------|:-------:|:-----:|:-----:|
-| Calidad headless (`npm run check`, validate, tests) | Sí | Sí | Sí |
-| Authoring (features, flows, `docs/agent/`) | Sí | Sí | Sí |
-| CI (GitHub / Azure / GitLab) | Sí | Sí | Sí |
-| Instalación Maestro vía `npm run setup` | Manual | Sí | Sí |
-| E2E **Android** en emulador/dispositivo | Sí | Sí | Sí |
-| E2E **iOS** en simulador | No | Sí | No |
+
+| Capa                                                | Windows | macOS | Linux |
+| --------------------------------------------------- | ------- | ----- | ----- |
+| Calidad headless (`npm run check`, validate, tests) | Sí      | Sí    | Sí    |
+| Agente IA (`docs/agent/`)                           | Sí      | Sí    | Sí    |
+| CI (GitHub / Azure / GitLab)                        | Sí      | Sí    | Sí    |
+| Instalación Maestro vía `npm run setup`             | Manual  | Sí    | Sí    |
+| E2E **Android** en emulador/dispositivo             | Sí      | Sí    | Sí    |
+| E2E **iOS** en simulador                            | No      | Sí    | No    |
+
 
 Notas:
 
-- **Windows:** instala Maestro manualmente si `npm run setup` lo indica. Ajusta la ruta de `maestro` en [`.mcp.json`](.mcp.json) si usas el MCP del IDE. Emulador Android con Android Studio.
+- **Windows:** instala Maestro manualmente si `npm run setup` lo indica. Ajusta la ruta de `maestro` en `[.mcp.json](.mcp.json)` si usas el MCP del IDE. Emulador Android con Android Studio.
 - **macOS:** único SO con soporte local **iOS + Android** (Xcode + Android Studio).
 - **Linux:** Android en emulador; iOS solo vía CI macOS, agente cloud (p. ej. BrowserStack) o `--executor browserstack`.
-- **`npm run doctor`** puede fallar sin `adb`/`xcrun` aunque `npm run check` pase — normal en máquinas solo headless.
+- `npm run doctor` puede fallar sin `adb`/`xcrun` aunque `npm run check` pase — normal en máquinas solo headless.
 
-Comandos CLI de emuladores (macOS/Linux): [`docs/DEVICE.md`](docs/DEVICE.md).
+Comandos CLI de emuladores (macOS/Linux): `[docs/DEVICE.md](docs/DEVICE.md)`.
 
 ---
+
+
 
 ## Instalación
 
@@ -115,42 +155,54 @@ npm run check      # gate headless (recomendado en CI)
 
 ---
 
+
+
 ## Variables de entorno
 
-Plantilla: [`.env.example`](.env.example) — bloques **Core**, **Reporting**, **Azure (opcional)**, **BrowserStack (opcional)**, **IDE MCP (opcional)**.
+Plantilla: `[.env.example](.env.example)` — bloques **Core**, **Reporting**, **Azure (opcional)**, **BrowserStack (opcional)**, **IDE MCP (opcional)**.
 
 - **Core:** `ANDROID_APP_ID`, `IOS_APP_ID`, `APP_SOURCE_DIR`, credenciales de demo, etc.
 - **Azure (opcional):** `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID` (alias legacy `PLAN_ID` / `SUITE_ID`), `AZURE_DEVOPS_PAT` para publicar resultados.
-- **IDE MCP (opcional):** `GITHUB_TOKEN` si añades el MCP de GitHub en [`.mcp.json`](.mcp.json) — ver [`docs/agent/mcp-examples.md`](docs/agent/mcp-examples.md). No lo usa ningún script npm.
+- **IDE MCP (opcional):** `GITHUB_TOKEN` si añades el MCP de GitHub en `[.mcp.json](.mcp.json)` — ver `[docs/agent/mcp-examples.md](docs/agent/mcp-examples.md)`. No lo usa ningún script npm.
 
 ---
+
+
 
 ## Escenarios demo incluidos
 
-| Feature | Tipo | Flow |
-| ------- | ---- | ---- |
-| `DemoOnboarding.feature` | Shared (Android + iOS) | `flows/DemoOnboarding.yml` → `android/` / `ios/` |
-| `DemoLogin.feature` | Shared | `flows/DemoLogin.yml` → `shared/DemoLogin.yml` |
-| `DemoAndroidMenu.feature` | Android | `flows/DemoAndroidMenu.yml` → `android/` |
-| `DemoIosTabs.feature` | iOS | `flows/DemoIosTabs.yml` → `ios/` |
-| `DemoGherkinStructures.feature` | Background + Outline | Pickles expandidos (3 ejecuciones) |
+
+| Feature                         | Tipo                   | Flow                                             |
+| ------------------------------- | ---------------------- | ------------------------------------------------ |
+| `DemoOnboarding.feature`        | Shared (Android + iOS) | `flows/DemoOnboarding.yml` → `android/` / `ios/` |
+| `DemoLogin.feature`             | Shared                 | `flows/DemoLogin.yml` → `shared/DemoLogin.yml`   |
+| `DemoAndroidMenu.feature`       | Android                | `flows/DemoAndroidMenu.yml` → `android/`         |
+| `DemoIosTabs.feature`           | iOS                    | `flows/DemoIosTabs.yml` → `ios/`                 |
+| `DemoGherkinStructures.feature` | Background + Outline   | Pickles expandidos (3 ejecuciones)               |
+
 
 ---
+
+
 
 ## Tras crear tu proyecto
 
 Al hacer fork de la template, sustituye los demos por tests de tu app:
 
-| Acción | Qué hacer |
-|--------|-----------|
-| **Sustituir** | `Demo*.feature`, `demo-*.json` en `step-definitions/`, flows `Demo*` en `flows/`, `shared/`, `android/` e `ios/` |
-| **Configurar** | `.env` (app IDs, `APP_SOURCE_DIR`, credenciales); Azure solo si publicas en Test Plans |
-| **Conservar** | Estructura de carpetas, `npm run check`, ejemplos CI en [`integrations/`](integrations/README.md) |
-| **Opcional** | Authoring: `docs/agent/`, `e2e-specs/`, [`.mcp.json`](.mcp.json) + [`mcp-examples.md`](docs/agent/mcp-examples.md); BrowserStack; publicación Azure |
+
+| Acción         | Qué hacer                                                                                                                                           |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sustituir**  | `Demo*.feature`, `demo-*.json` en `step-definitions/`, flows `Demo`* en `flows/`, `shared/`, `android/` e `ios/`                                    |
+| **Configurar** | `.env` (app IDs, `APP_SOURCE_DIR`, credenciales); Azure solo si publicas en Test Plans                                                              |
+| **Conservar**  | Estructura de carpetas, `npm run check`, ejemplos CI en `[integrations/](integrations/README.md)`                                                   |
+| **Opcional**   | Agente IA: `docs/agent/`, `e2e-specs/`, [`.mcp.json`](.mcp.json) + [`mcp-examples.md`](docs/agent/mcp-examples.md); BrowserStack; publicación Azure |
+
 
 Para el primer escenario real, sigue [Añadir un test real](#añadir-un-test-real).
 
 ---
+
+
 
 ## Ejecución
 
@@ -181,15 +233,19 @@ node maestro/scripts/gherkin-runner.js --from-suite --platform all --no-publish
 
 ---
 
+
+
 ## Dispositivos
 
-Antes de `npm run feature` o `npm run flow:*`, arranca simulador/emulador e instala la app (Android Studio / Xcode). Comandos CLI opcionales: [`docs/DEVICE.md`](docs/DEVICE.md).
+Antes de `npm run feature` o `npm run flow:*`, arranca simulador/emulador e instala la app (Android Studio / Xcode). Comandos CLI opcionales: `[docs/DEVICE.md](docs/DEVICE.md)`.
 
 ---
 
+
+
 ## Diccionario Gherkin
 
-[`maestro/scripts/gherkin-dictionary/README.md`](maestro/scripts/gherkin-dictionary/README.md)
+`[maestro/scripts/gherkin-dictionary/README.md](maestro/scripts/gherkin-dictionary/README.md)`
 
 ```bash
 npm run gherkin-report      # extrae y abre la UI
@@ -197,6 +253,8 @@ npm run gherkin-extract     # solo regenera JSON/CSV
 ```
 
 ---
+
+
 
 ## Estructura del proyecto
 
@@ -206,9 +264,10 @@ izertis-maestro-template/
 ├── .mcp.json              # MCP maestro (TMS opcional — ver docs/agent/mcp-examples.md)
 ├── AGENTS.md              # reglas para agentes IA
 ├── docs/
+│   ├── README.md          # índice de documentación
 │   ├── CI.md
-│   ├── DEVICE.md          # emuladores / adb / suite CLI (opcional)
-│   └── agent/             # playbooks + mcp-examples.md (opcional)
+│   ├── DEVICE.md
+│   └── agent/             # workflow + playbooks (issue → sanity)
 ├── e2e-specs/             # specs de planificación E2E (opcional)
 ├── integrations/          # ejemplos CI headless (copiar al proyecto cliente)
 ├── reports/               # resultados (gitignored)
@@ -225,10 +284,3 @@ izertis-maestro-template/
 
 ---
 
-## Añadir un test real
-
-1. **(Opcional)** Planificar con el agente **test-planner** → `e2e-specs/specs/<id>.md` ([`docs/agent/`](docs/agent/README.md))
-2. `maestro/features/<Nombre>.feature` (Gherkin en español)
-3. `maestro/step-definitions/<nombre>.json` (validar contra `schema.json`)
-4. Flows en `flows/`, `shared/`, `android/`, `ios/` (cubrir ambas plataformas salvo excepción justificada)
-5. `npm run check`
