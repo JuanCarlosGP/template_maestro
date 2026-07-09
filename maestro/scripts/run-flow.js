@@ -58,18 +58,25 @@ if (!appId) {
 const env = { APP_ID: appId }
 if (appName) env.APP_NAME = appName
 
-const { maestroArgs, cwd } = buildMaestroTestArgs(args.platform)
-appendMaestroEnvArgs(maestroArgs, env)
-maestroArgs.push(flowFile)
+async function main() {
+  const { maestroArgs, cwd } = buildMaestroTestArgs(args.platform)
+  appendMaestroEnvArgs(maestroArgs, env)
+  maestroArgs.push(flowFile)
 
-console.log(`Running: ${getMaestroBinary()} ${maestroArgs.join(' ')}`)
-console.log(`cwd: ${cwd}`)
+  console.log(`Running: ${getMaestroBinary()} ${maestroArgs.join(' ')}`)
+  console.log(`cwd: ${cwd}`)
 
-try {
-  execMaestroSync(maestroArgs, { cwd })
-} catch (err) {
-  if (err && (err.code === 'ENOENT' || err.errno === -4058)) {
-    console.error('Maestro CLI not found. Run npm run setup or set MAESTRO_CLI in .env (https://docs.maestro.dev/getting-started/installing-maestro)')
+  try {
+    await execMaestroSync(maestroArgs, { cwd, flowFile })
+  } catch (err) {
+    if (err && (err.code === 'ENOENT' || err.errno === -4058)) {
+      console.error('Maestro CLI not found. Run npm run setup or set MAESTRO_CLI in .env (https://docs.maestro.dev/getting-started/installing-maestro)')
+    }
+    process.exit(err.status || 1)
   }
-  process.exit(err.status || 1)
 }
+
+main().catch(err => {
+  console.error(err.message || err)
+  process.exit(1)
+})

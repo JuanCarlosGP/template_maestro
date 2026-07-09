@@ -15,7 +15,18 @@ const {
   appendMaestroEnvArgs,
   buildMaestroTestArgs,
   prepareMaestroAndroidBeforeCliRun,
+  prepareMaestroBetweenFlowRuns,
+  isMaestroSessionLockError,
 } = require('./resolve-maestro-bin')
+const {
+  formatScenarioHeader,
+  formatGherkinSteps,
+  formatFlowLaunch,
+  formatMaestroCommand,
+  formatFlowResult,
+  formatFeatureHeader,
+  formatSessionPrepNote,
+} = require('./lib/runner-output')
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -191,9 +202,11 @@ function findLatestScreenshot() {
   return latest
 }
 
-// ---------------------------------------------------------------------------
-// Maestro executor
-// ---------------------------------------------------------------------------
+function gherkinKeywordFromPickleStep(step) {
+  const map = { Context: 'Given', Action: 'When', Outcome: 'Then', Conjunction: 'And' }
+  if (step?.type && map[step.type]) return map[step.type]
+  return (step?.keyword || 'Step').trim()
+}
 
 /** Flows que usan ${APP_NAME} (p. ej. diálogos de permisos). El resto no lo necesita en CLI. */
 const FLOWS_USING_APP_NAME = new Set(['AcceptPermissions', 'Login', 'AppLanguage'])
@@ -213,8 +226,9 @@ function resolveMaestroFlowPath(flowName) {
   return flowsPath
 }
 
-function runMaestroFlow(flowName, env, platform) {
-  console.log(`  Running Maestro flow: ${flowName} with env ${JSON.stringify(env)}`)
+let localMaestroFlowRunCount = 0
+
+async function runMaestroFlow(flowName, env, platform) {
   const flowFile = resolveMaestroFlowPath(flowName)
 
   if (!fs.existsSync(flowFile)) {
@@ -225,19 +239,53 @@ function runMaestroFlow(flowName, env, platform) {
   appendMaestroEnvArgs(maestroArgs, filterEnvForFlow(flowName, env))
   maestroArgs.push(flowFile)
   const maestroBin = getMaestroBinary()
-  console.log(`  Running: ${maestroBin} ${maestroArgs.join(' ')}`)
-  try {
-    execMaestroSync(maestroArgs, { cwd })
-  } catch (err) {
-    if (err && (err.code === 'ENOENT' || err.errno === -4058)) {
-      throw new Error(
-        `No se encuentra el ejecutable Maestro (${maestroBin}). ` +
-          'Instala Maestro, añádelo al PATH o define MAESTRO_CLI (p. ej. $HOME/.maestro/bin/maestro). ' +
-          'En Windows usa WSL; ver README.'
-      )
+
+  const maxAttempts = Number(process.env.MAESTRO_RUN_RETRIES || 3)
+  let lastErr = null
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let sessionCleared = false
+    if (attempt > 1) {
+      console.warn(`  [maestro] Reintento ${attempt}/${maxAttempts} tras bloqueo de sesión...`)
+      const prep = await prepareMaestroBetweenFlowRuns({ forceDelay: true })
+      sessionCleared = prep.sessionCleared
+    } else if (localMaestroFlowRunCount > 0 && executor === 'local') {
+      const prep = await prepareMaestroBetweenFlowRuns()
+      sessionCleared = prep.sessionCleared
     }
-    throw err
+
+    if (attempt === 1 || sessionCleared) {
+      if (sessionCleared) process.stdout.write(formatSessionPrepNote())
+      process.stdout.write(formatFlowLaunch({
+        flowName,
+        flowFile,
+        platform,
+        env: filterEnvForFlow(flowName, env),
+      }))
+      const commandLine = formatMaestroCommand(maestroBin, maestroArgs)
+      if (commandLine) process.stdout.write(commandLine)
+    }
+
+    try {
+      await execMaestroSync(maestroArgs, { cwd, flowFile })
+      localMaestroFlowRunCount++
+      return
+    } catch (err) {
+      lastErr = err
+      if (err && (err.code === 'ENOENT' || err.errno === -4058)) {
+        throw new Error(
+          `No se encuentra el ejecutable Maestro (${maestroBin}). ` +
+            'Instala Maestro, añádelo al PATH o define MAESTRO_CLI (p. ej. $HOME/.maestro/bin/maestro).'
+        )
+      }
+      const canRetry = attempt < maxAttempts
+        && executor === 'local'
+        && isMaestroSessionLockError(err)
+      if (!canRetry) break
+    }
   }
+
+  throw lastErr
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +307,7 @@ async function runFeature(featurePath, filterScenarioName, platform, appId, bsCo
   }
 
   const fileName = path.basename(featurePath)
-  console.log(`\nFeature: ${fileName}`)
+  console.log(formatFeatureHeader(fileName))
 
   const nameCounts = new Map()
   for (const pickle of pickles) {
@@ -278,9 +326,16 @@ async function runFeature(featurePath, filterScenarioName, platform, appId, bsCo
     nameIndex.set(pickle.name, idx + 1)
     const displayName = pickleLabel(pickle, idx, nameCounts.get(pickle.name))
 
-    console.log(`\nScenario: ${displayName}`)
-
     const stepTexts = getPickleStepTexts(pickle)
+    const gherkinSteps = (pickle.steps || []).map(step => {
+      const resolved = resolveStep(step.text)
+      return {
+        keyword: gherkinKeywordFromPickleStep(step),
+        text: step.text,
+        flow: resolved.flow,
+      }
+    })
+
     let flowsToRun
     try {
       flowsToRun = buildFlowsFromSteps(stepTexts, (text) => {
@@ -300,6 +355,9 @@ async function runFeature(featurePath, filterScenarioName, platform, appId, bsCo
       })
       continue
     }
+
+    console.log(formatScenarioHeader(displayName, { featureFile: fileName, platform }))
+    process.stdout.write(formatGherkinSteps(gherkinSteps))
 
     /** @type {'passed' | 'failed'} */
     let scenarioStatus = 'passed'
@@ -337,8 +395,8 @@ async function runFeature(featurePath, filterScenarioName, platform, appId, bsCo
         const env = { ...scenarioEnv, ...flowParams }
 
         try {
-          runMaestroFlow(flowName, env, platform)
-          console.log(`  Flow "${flowName}" passed`)
+          await runMaestroFlow(flowName, env, platform)
+          process.stdout.write(formatFlowResult(flowName, 'passed'))
         } catch (err) {
           scenarioStatus = 'failed'
           scenarioError = err.message
