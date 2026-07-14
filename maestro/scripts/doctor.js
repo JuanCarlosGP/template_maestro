@@ -10,7 +10,7 @@
 //                             xcrun/adb for the platforms you intend to run.
 //   SOFT (warn only):         AZURE_DEVOPS_PAT, a booted device, APP_SOURCE_DIR.
 
-const { execSync } = require('child_process')
+const { execFileSync, execSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 
@@ -21,6 +21,27 @@ function run(cmd) {
   try {
     return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
   } catch {
+    return null
+  }
+}
+
+/** Resolve a CLI on PATH (where on Windows, which elsewhere). Falls back to running `<name> version`. */
+function resolveBinOnPath(name) {
+  const lookup = process.platform === 'win32' ? 'where' : 'which'
+  try {
+    const out = execFileSync(lookup, [name], {
+      encoding: 'utf8',
+      shell: process.platform === 'win32',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+    const first = out.split(/\r?\n/).map((line) => line.trim()).find(Boolean)
+    if (first) return first
+  } catch (_) {}
+
+  try {
+    execFileSync(name, ['version'], { stdio: ['ignore', 'pipe', 'ignore'] })
+    return name
+  } catch (_) {
     return null
   }
 }
@@ -58,9 +79,9 @@ maestro ? ok(`Maestro CLI ${maestro}`) : fail('Maestro CLI not found — run `np
 
 // --- Platform tooling ---------------------------------------------------------
 console.log('\nPlatform tooling:')
-const xcrun = run('which xcrun')
+const xcrun = resolveBinOnPath('xcrun')
 xcrun ? ok('xcrun (iOS) available') : warn('xcrun not found — iOS runs unavailable')
-const adb = run('which adb')
+const adb = resolveBinOnPath('adb')
 adb ? ok('adb (Android) available') : warn('adb not found — Android runs unavailable')
 if (!xcrun && !adb) fail('neither xcrun nor adb found — cannot run on any platform')
 

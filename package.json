@@ -14,6 +14,8 @@
     "gherkin-extract": "node maestro/scripts/gherkin-dictionary/extract.js",
     "feature": "node maestro/scripts/gherkin-runner.js",
     "feature:expand-bank-login": "node maestro/scripts/gherkin-runner.js --feature maestro/features/AppiumPracticeExpandBank.feature --platform android --no-publish",
+    "feature:counter": "node maestro/scripts/gherkin-runner.js --feature maestro/features/AppiumPracticeCounter.feature --platform android --no-publish",
+    "feature:webview": "node maestro/scripts/gherkin-runner.js --feature maestro/features/AppiumPracticeWebView.feature --platform android --no-publish",
     "flow:android": "node maestro/scripts/run-flow.js --platform android",
     "flow:ios": "node maestro/scripts/run-flow.js --platform ios",
     "setup": "node maestro/scripts/setup.js",

@@ -72,4 +72,36 @@ describe('appium-practice step patterns', () => {
   it('does not match unrelated text', () => {
     assert.equal(resolveStepSafe('inicio sesión sin credenciales'), null)
   })
+
+  it('matches counter section navigation step', () => {
+    const resolved = resolveStep('entro en "01 COUNTER"')
+    assert.equal(resolved.flow, 'TapAppSection')
+    assert.equal(resolved.params.SECTION, '01 COUNTER')
+  })
+
+  it('matches counter increment step with vez/veces', () => {
+    const once = resolveStep('pulso incrementar 1 vez')
+    assert.equal(once.flow, 'CounterIncrement')
+    assert.equal(once.params.TIMES, '1')
+
+    const thrice = resolveStep('pulso incrementar 3 veces')
+    assert.equal(thrice.flow, 'CounterIncrement')
+    assert.equal(thrice.params.TIMES, '3')
+
+    const dec = resolveStep('pulso decrementar 1 vez')
+    assert.equal(dec.flow, 'CounterDecrement')
+    assert.equal(dec.params.TIMES, '1')
+  })
+
+  it('matches webview navigation and assert steps', () => {
+    const nav = resolveStep('navego en el WebView a "https://en.wikipedia.org/wiki/Main_Page"')
+    assert.equal(nav.flow, 'WebViewNavigateUrl')
+    assert.equal(nav.params.URL, 'https://en.wikipedia.org/wiki/Main_Page')
+
+    const assertWeb = resolveStep('en el WebView veo el texto "Welcome to Wikipedia"')
+    assert.equal(assertWeb.flow, 'AssertWebViewText')
+    assert.equal(assertWeb.params.TEXT, 'Welcome to Wikipedia')
+
+    assert.equal(resolveStep('pulso clear del WebView').flow, 'WebViewClear')
+  })
 })

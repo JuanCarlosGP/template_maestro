@@ -18,6 +18,16 @@ function isVerbose() {
   )
 }
 
+/** One-line flow headers by default; set GHERKIN_RUNNER_COMPACT=0 for the multi-line block. */
+function isCompact() {
+  if (isVerbose()) return false
+  const raw = process.env.GHERKIN_RUNNER_COMPACT
+  if (raw == null || raw === '') return true
+  return !/^(0|false|no)$/i.test(raw)
+}
+
+const FLOW_LAUNCH_OMIT_ENV = new Set(['PLATFORM', 'APP_ID', 'APP_NAME'])
+
 function shortenPath(absPath) {
   if (!absPath) return ''
   const normalized = path.resolve(absPath)
@@ -120,16 +130,23 @@ function formatGherkinSteps(steps) {
  */
 function formatFlowLaunch(opts) {
   const { flowName, flowFile, platform, env } = opts
+  const envPairs = formatEnvPairs(env, { omit: [...FLOW_LAUNCH_OMIT_ENV] })
+
+  if (isCompact()) {
+    const suffix = envPairs.length ? `  ${envPairs.join('  ')}` : ''
+    return `\n  ▶ ${flowName}${suffix}\n`
+  }
+
   const relFlow = shortenPath(flowFile)
-  const envPairs = formatEnvPairs(env)
+  const fullEnvPairs = formatEnvPairs(env)
   const lines = [
     '',
     '  Maestro',
     `  Flow      ${flowName}  (${relFlow})`,
     `  Platform  ${platform}`,
   ]
-  if (envPairs.length) {
-    lines.push(`  Env       ${envPairs.join('  ')}`)
+  if (fullEnvPairs.length) {
+    lines.push(`  Env       ${fullEnvPairs.join('  ')}`)
   }
   if (isVerbose()) {
     lines.push('  (verbose) full env and CLI printed below')
@@ -161,6 +178,7 @@ function formatSessionPrepNote() {
 
 module.exports = {
   isVerbose,
+  isCompact,
   shortenPath,
   maskEnvValue,
   formatEnvPairs,

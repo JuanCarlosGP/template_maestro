@@ -27,6 +27,7 @@ const {
   formatFeatureHeader,
   formatSessionPrepNote,
 } = require('./lib/runner-output')
+const { resetMaestroOutputSession } = require('./lib/maestro-output')
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -358,6 +359,7 @@ async function runFeature(featurePath, filterScenarioName, platform, appId, bsCo
 
     console.log(formatScenarioHeader(displayName, { featureFile: fileName, platform }))
     process.stdout.write(formatGherkinSteps(gherkinSteps))
+    resetMaestroOutputSession()
 
     /** @type {'passed' | 'failed'} */
     let scenarioStatus = 'passed'

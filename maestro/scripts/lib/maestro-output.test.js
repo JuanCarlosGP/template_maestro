@@ -1,10 +1,13 @@
 'use strict'
 
-const { describe, it } = require('node:test')
+const { describe, it, beforeEach } = require('node:test')
 const assert = require('node:assert/strict')
-const { MaestroStepRenderer } = require('./maestro-output')
+const { MaestroStepRenderer, resetMaestroOutputSession } = require('./maestro-output')
 
 describe('MaestroStepRenderer', () => {
+  beforeEach(() => {
+    resetMaestroOutputSession()
+  })
   it('transforms box steps from pending to running to passed', () => {
     const r = new MaestroStepRenderer()
     r.flowName = 'DemoOnboarding'
@@ -49,6 +52,7 @@ describe('MaestroStepRenderer', () => {
   it('reconstructs box UI from plain Maestro output', () => {
     const r = new MaestroStepRenderer()
     assert.equal(r.processLine('Running on device-1'), '  Device    device-1\n')
+    assert.equal(r.processLine('Running on device-1'), '')
 
     r.processLine(' > Flow DemoOnboarding')
     const running = r.processLine('Run ../android/DemoOnboarding.yml when Platform is ANDROID...')

@@ -7,9 +7,10 @@ const {
   formatGherkinSteps,
   formatFlowLaunch,
   formatMaestroCommand,
-  maskEnvValue,
   formatEnvPairs,
+  maskEnvValue,
   isVerbose,
+  isCompact,
 } = require('./runner-output')
 
 describe('runner-output', () => {
@@ -65,7 +66,22 @@ describe('runner-output', () => {
     assert.equal(maskEnvValue('PASSWORD', 'secret'), '••••')
   })
 
-  it('prints compact flow launch by default', () => {
+  it('prints one-line flow launch by default', () => {
+    const out = formatFlowLaunch({
+      flowName: 'DemoBank',
+      flowFile: 'C:\\repo\\maestro\\flows\\DemoBank.yml',
+      platform: 'android',
+      env: { PLATFORM: 'android', APP_ID: 'com.app', BANK_EXPECT: 'error' },
+    })
+    assert.match(out, /▶ DemoBank/)
+    assert.match(out, /BANK_EXPECT=error/)
+    assert.doesNotMatch(out, /PLATFORM=android/)
+    assert.doesNotMatch(out, /APP_ID=com\.app/)
+    assert.doesNotMatch(out, /^  Maestro$/m)
+  })
+
+  it('prints full flow launch block when compact is off', () => {
+    process.env.GHERKIN_RUNNER_COMPACT = '0'
     const out = formatFlowLaunch({
       flowName: 'DemoBank',
       flowFile: 'C:\\repo\\maestro\\flows\\DemoBank.yml',
@@ -77,6 +93,18 @@ describe('runner-output', () => {
     assert.match(out, /Platform\s+android/)
     assert.match(out, /BANK_EXPECT=error/)
     assert.doesNotMatch(out, /PLATFORM=android/)
+  })
+
+  it('prints full flow launch block in verbose mode', () => {
+    process.env.GHERKIN_RUNNER_VERBOSE = '1'
+    const out = formatFlowLaunch({
+      flowName: 'DemoBank',
+      flowFile: 'C:\\repo\\maestro\\flows\\DemoBank.yml',
+      platform: 'android',
+      env: { BANK_EXPECT: 'error' },
+    })
+    assert.match(out, /Maestro/)
+    assert.match(out, /verbose/)
   })
 
   it('hides maestro CLI unless verbose', () => {

@@ -6,6 +6,7 @@ Harness prose is **English** in this folder; **Gherkin and e2e-specs content sta
 
 | Doc | Audience | Purpose |
 |-----|----------|---------|
+| [`guia-framework-maestro.html`](guia-framework-maestro.html) | Humans | Visual onboarding guide (open in any browser) |
 | [`CI.md`](CI.md) | Humans / DevOps | Headless gate, device jobs, reports, example pipelines |
 | [`DEVICE.md`](DEVICE.md) | Humans | Emulators, installs, Maestro CLI — local device work |
 | [`agent/README.md`](agent/README.md) | AI agents | Playbooks, MCP setup, **end-to-end workflow** |

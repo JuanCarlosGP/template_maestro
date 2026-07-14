@@ -14,6 +14,13 @@ const RUN_MARKERS = new Set(['>', '⏳'])
 const SKIP_MARKERS = new Set(['-', '⬜', '⚪', '⚪️'])
 const PENDING_MARKERS = new Set(['?', '○', '◌', '⬛', '🔲', ' '])
 
+/** @type {string | null} */
+let lastDeviceIdPrinted = null
+
+function resetMaestroOutputSession() {
+  lastDeviceIdPrinted = null
+}
+
 /**
  * Transforms Maestro CLI output into the box UI (║) with ⬛/⏳/✅/❌ step icons.
  */
@@ -411,6 +418,8 @@ class MaestroStepRenderer {
         out += this.seedPlan(plan)
       }
       const deviceId = line.slice('Running on '.length).trim()
+      if (deviceId === lastDeviceIdPrinted) return out
+      lastDeviceIdPrinted = deviceId
       const deviceLine = `  Device    ${deviceId}`
       if (deviceLine === this.lastRunningLine) return out
       this.lastRunningLine = deviceLine
@@ -860,4 +869,5 @@ class MaestroStepRenderer {
 module.exports = {
   ICONS,
   MaestroStepRenderer,
+  resetMaestroOutputSession,
 }
