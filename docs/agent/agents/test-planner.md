@@ -17,8 +17,12 @@ Harness prose is English; **the spec you write is in Spanish** (matching the tic
    - **`github`** / **`gitlab`** — issue body: Gherkin and/or acceptance criteria
    If no TMS MCP, use `gh`/`glab` CLI or ask the user to paste content — note *unverified* in spec.
 2. **Environment scout report** — from [`environment-scout.md`](environment-scout.md): live screens,
-   selectors observed, blockers, reusable flows. If scout was skipped, write `(no ejecutado)` in
-   Reconocimiento and rely on `APP_SOURCE_DIR` + existing flows (higher risk).
+   selectors observed, blockers, reusable flows.
+
+   **Hard stop:** if scout was **not run**, returned a **no-device / hard blocker**, or the device
+   dropped before HU screens were verified — **do not write** `e2e-specs/specs/<id>.md`. Tell the
+   user to connect a device, run `npm run doctor:device`, and restart author-e2e-test. Do **not**
+   plan from `APP_SOURCE_DIR` alone as a substitute for scout when the gate failed.
 3. **Existing suite** — `maestro/features/*.feature`, `step-definitions/*.json`,
    `flows|shared|ios|android/*.yml`. Reuse steps/flows (longest matching pattern wins).
 4. **App source** — `APP_SOURCE_DIR`: likely `testID`s and Spanish copy to complement scout data.

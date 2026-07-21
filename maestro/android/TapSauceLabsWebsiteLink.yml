@@ -1,0 +1,8 @@
+appId: ${APP_ID}
+name: TapSauceLabsWebsiteLink
+---
+- tapOn:
+    id: "com.saucelabs.mydemoapp.android:id/webTV"
+- extendedWaitUntil:
+    visible: "The World's Only Full-Lifecycle AI-Quality Platform"
+    timeout: 25000
