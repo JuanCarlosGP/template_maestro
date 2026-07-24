@@ -73,11 +73,9 @@ Feature: Autenticación My Demo App
 
   Scenario: Login y logout con usuario demo
     Given abro My Demo App en la pantalla principal
-    When abro el menú lateral
-    And pulso "Log In" en el menú
+    When abro el menú y pulso "Log In"
     And inicio sesión con usuario "bod@example.com" y contraseña "10203040"
-    And abro el menú lateral
-    And pulso "Log Out" en el menú
+    And abro el menú y pulso "Log Out"
     Then veo el texto "Are you sure you want to logout"
     When confirmo el logout en el diálogo
     Then veo el texto "Login"
@@ -89,8 +87,8 @@ Feature: Autenticación My Demo App
 ## Plan de automatización
 
 - Feature: `maestro/features/MyDemoAppAuth.feature`
-- Step-definitions: `step-definitions/my-demo-app.json` (nuevos: TapMenuItem, LoginWithCredentials, ConfirmLogoutDialog; `abro el menú lateral` → null | reutiliza: OpenApp, AssertVisibleText)
-- Flows: `TapMenuItem`, `LoginWithCredentials`, `ConfirmLogoutDialog` (+ `android/`; `OpenSideMenu` disponible pero no referenciado por dedup)
+- Step-definitions: `step-definitions/common.json` + `auth.json` (nuevos en auth: LoginWithCredentials, ConfirmLogoutDialog; common: TapMenuItem, OpenApp, AssertVisibleText)
+- Flows: `TapMenuItem`, `LoginWithCredentials`, `ConfirmLogoutDialog` (+ `android/`)
 - Reutiliza: `OpenApp`, `AssertVisibleText`
 
 ## Cobertura por plataforma
@@ -116,7 +114,7 @@ Feature: Autenticación My Demo App
 - Credenciales demo en Gherkin (públicas en la app); params → `--env` del flow (no hardcode en YAML).
 - Reutilizar `AssertVisibleText` para el mensaje del diálogo y el título "Login".
 - Flujo de login tipado en campos (no tap en lista de usernames demo) para reflejar la HU.
-- `abro el menú lateral` → `flow: null`; la apertura del drawer vive en `TapMenuItem` para evitar dedup del runner (mismo flow sin params solo se ejecuta una vez).
+- Un solo step `abro el menú y pulso "…"` → `TapMenuItem` (abre hamburguesa + pulsa el ítem).
 
 ## Casos límite confirmados
 
@@ -146,12 +144,10 @@ Feature: Autenticación My Demo App
 | Criterio / HU | Paso Gherkin | Flow / aserción | ¿Suficiente? |
 |---------------|--------------|-----------------|--------------|
 | Entrar en la app | abro My Demo App… | OpenApp (launchApp clearState) | sí |
-| Abrir panel lateral (hamburguesa) | abro el menú lateral + pulso "…" | TapMenuItem → tap `menuIV` | sí — open embebido en TapMenuItem |
-| Pulsar Log In | pulso "Log In" en el menú | TapMenuItem MENU_ITEM=Log In | sí |
+| Abrir menú e ir a Login | abro el menú y pulso "Log In" | TapMenuItem → menuIV + Log In | sí |
 | Credenciales bod@… / 10203040 | inicio sesión con usuario "…" | LoginWithCredentials nameET/passwordET | sí |
 | Pulsar Login | (incluido en paso anterior) | tap `loginBtn` | sí |
-| Abrir menú de nuevo | abro el menú lateral + pulso Log Out | TapMenuItem (2ª vez, params distintos) | sí |
-| Pulsar Log Out | pulso "Log Out" en el menú | TapMenuItem MENU_ITEM=Log Out | sí |
+| Abrir menú e ir a Log Out | abro el menú y pulso "Log Out" | TapMenuItem (2ª vez, params distintos) | sí |
 | Mensaje diálogo logout | veo el texto "Are you sure…" | AssertVisibleText | sí |
 | Pulsar LOGOUT | confirmo el logout en el diálogo | ConfirmLogoutDialog tap LOGOUT | sí |
 | Pantalla redirige con "Login" | veo el texto "Login" | AssertVisibleText | sí — post-logout |

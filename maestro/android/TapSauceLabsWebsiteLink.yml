@@ -4,5 +4,5 @@ name: TapSauceLabsWebsiteLink
 - tapOn:
     id: "com.saucelabs.mydemoapp.android:id/webTV"
 - extendedWaitUntil:
-    visible: "The World's Only Full-Lifecycle AI-Quality Platform"
+    visible: "Verify AI-generated code at the pace it's written."
     timeout: 25000

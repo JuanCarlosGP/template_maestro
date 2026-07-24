@@ -5,7 +5,6 @@ Feature: WebView My Demo App
 
   Scenario: Abrir Wikipedia en el WebView
     Given abro My Demo App en la pantalla principal
-    When abro el menú lateral
-    And pulso "WebView" en el menú
+    When abro el menú y pulso "WebView"
     And navego a la URL "https://www.wikipedia.org"
     Then veo el texto "Wikipedia The Free Encyclopedia"

@@ -47,7 +47,7 @@ Verificar que desde el menú lateral se puede abrir la sección WebView, introdu
 
 ### Flujos existentes reutilizables
 - `OpenApp`
-- `TapMenuItem` (abre menú + tap; `abro el menú lateral` → `flow: null` por dedup)
+- `TapMenuItem` (abre menú + tap del ítem)
 - `AssertVisibleText`
 
 ### Riesgos / blockers
@@ -67,8 +67,7 @@ Feature: WebView My Demo App
 
   Scenario: Abrir Wikipedia en el WebView
     Given abro My Demo App en la pantalla principal
-    When abro el menú lateral
-    And pulso "WebView" en el menú
+    When abro el menú y pulso "WebView"
     And navego a la URL "https://www.wikipedia.org"
     Then veo el texto "Wikipedia The Free Encyclopedia"
 ```
@@ -78,7 +77,7 @@ Feature: WebView My Demo App
 ## Plan de automatización
 
 - Feature: `maestro/features/MyDemoAppWebView.feature`
-- Step-definitions: `step-definitions/my-demo-app.json` (nuevo: `navego a la URL "(.+)"` → `WebViewNavigateUrl` con param `URL` | reutiliza: OpenApp, TapMenuItem, AssertVisibleText, menú null)
+- Step-definitions: `step-definitions/webview.json` (nuevo: `navego a la URL "(.+)"` → `WebViewNavigateUrl`) | reutiliza `common.json`: OpenApp, TapMenuItem, AssertVisibleText
 - Flows: `WebViewNavigateUrl` (+ `android/`: tap `urlET`, eraseText, inputText `${URL}`, tap `goBtn`, wait visible contenido)
 - Reutiliza: `OpenApp`, `TapMenuItem`, `AssertVisibleText`
 
@@ -126,8 +125,8 @@ Feature: WebView My Demo App
 | Criterio / HU | Paso Gherkin | Flow / aserción | ¿Suficiente? |
 |---------------|--------------|-----------------|--------------|
 | Entrar en la app | abro My Demo App… | OpenApp | sí |
-| Abrir panel lateral | abro el menú lateral + pulso WebView | TapMenuItem → menuIV | sí |
-| Pulsar WebView | pulso "WebView" en el menú | TapMenuItem MENU_ITEM=WebView | sí |
+| Abrir panel lateral y WebView | abro el menú y pulso "WebView" | TapMenuItem → menuIV + WebView | sí |
+| Pulsar WebView | abro el menú y pulso "WebView" | TapMenuItem MENU_ITEM=WebView | sí |
 | Input URL + Wikipedia | navego a la URL "https://www.wikipedia.org" | WebViewNavigateUrl (urlET, eraseText, input, goBtn) | sí |
 | Pulsar Go To Site | (incluido en navego a la URL) | tap goBtn | sí |
 | Slogan Wikipedia | veo el texto "Wikipedia The Free Encyclopedia" | AssertVisibleText | sí — string exacto de jerarquía |

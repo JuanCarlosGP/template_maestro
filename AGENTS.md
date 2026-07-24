@@ -13,7 +13,7 @@ Optional AI playbooks live in [`docs/agent/`](docs/agent/README.md). End-to-end 
 ```
 features ──► gherkin-runner.js ──► step-definitions/ ──► flows/*.yml ──► device
                   │
-                  └──► reports/summary.json + junit.xml
+                  └──► reports/summary.json + junit.xml + index.html
 ```
 
 **Optional — Azure Test Plans publish** (omit `--no-publish` and configure `.env`):
@@ -47,13 +47,15 @@ Specs: [`e2e-specs/`](e2e-specs/README.md). Orchestration: [`docs/agent/workflow
 ## Example app (Sauce Labs My Demo App)
 
 Target Android app: **[My Demo App](https://github.com/saucelabs/my-demo-app-android)** (`com.saucelabs.mydemoapp.android`).
-Baseline step-defs live in `my-demo-app.json` (`OpenApp`, `AssertVisibleText`). Add Gherkin features and flows next.
+Step-defs are split by area so the template shows how to scale: `common.json` (shared),
+`auth.json`, `webview.json`, `about.json`. `index.js` merges every `*.json` automatically.
 
 After fork, add tests for your app using the same layout — see [README § Tras crear tu proyecto](README.md#tras-crear-tu-proyecto).
 
 ## Conventions
 
-- **One JSON per feature area** in `step-definitions/` (e.g. `my-demo-app.json`).
+- **One JSON per feature area** in `step-definitions/` (e.g. `auth.json`, `webview.json`).
+  Put shared steps (`OpenApp`, assertions, navigation) in `common.json`.
   Add a new file for a new area — do not bloat existing ones.
 - **Longest matching pattern wins.** Among all step definitions that match a Gherkin step,
   the runner picks the one with the longest `pattern`. Files load alphabetically, but array

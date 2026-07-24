@@ -5,11 +5,9 @@ Feature: Autenticación My Demo App
 
   Scenario: Login y logout con usuario demo
     Given abro My Demo App en la pantalla principal
-    When abro el menú lateral
-    And pulso "Log In" en el menú
+    When abro el menú y pulso "Log In"
     And inicio sesión con usuario "bod@example.com" y contraseña "10203040"
-    And abro el menú lateral
-    And pulso "Log Out" en el menú
+    And abro el menú y pulso "Log Out"
     Then veo el texto "Are you sure you want to logout"
     When confirmo el logout en el diálogo
     Then veo el texto "Login"

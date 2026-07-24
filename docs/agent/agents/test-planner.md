@@ -25,6 +25,8 @@ Harness prose is English; **the spec you write is in Spanish** (matching the tic
    plan from `APP_SOURCE_DIR` alone as a substitute for scout when the gate failed.
 3. **Existing suite** — `maestro/features/*.feature`, `step-definitions/*.json`,
    `flows|shared|ios|android/*.yml`. Reuse steps/flows (longest matching pattern wins).
+   Step-defs are **one JSON per area** (`auth.json`, `webview.json`, …); shared steps live in
+   `common.json`. Plan new steps into the matching area file — never a single growing monolith.
 4. **App source** — `APP_SOURCE_DIR`: likely `testID`s and Spanish copy to complement scout data.
 
 ## Gherkin from the issue
@@ -73,7 +75,7 @@ Harness prose is English; **the spec you write is in Spanish** (matching the tic
 
 ## Plan de automatización
 - Feature: `maestro/features/<Area>.feature`
-- Step-definitions: `step-definitions/<area>.json` (nuevos: <...> | reutiliza: <...>)
+- Step-definitions: `step-definitions/<area>.json` y/o `common.json` (nuevos: <...> | reutiliza: <...>)
 - Flows: `flows/<Name>.yml` (+ shared/ios/android según convenga)
 - Reutiliza: <flows/pasos existentes>
 

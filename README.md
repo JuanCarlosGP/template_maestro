@@ -177,7 +177,7 @@ App open-source de Sauce Labs — Android. Package ID: `com.saucelabs.mydemoapp.
 |---------|-------|
 | Repositorio | [saucelabs/my-demo-app-android](https://github.com/saucelabs/my-demo-app-android) |
 | `ANDROID_APP_ID` | `com.saucelabs.mydemoapp.android` |
-| Step-definitions | `maestro/step-definitions/my-demo-app.json` |
+| Step-definitions | `maestro/step-definitions/{common,auth,webview,about}.json` |
 | Flow base | `maestro/flows/OpenApp.yml` |
 
 **Prerrequisitos:** dispositivo o emulador Android, My Demo App instalada (APK desde [releases](https://github.com/saucelabs/my-demo-app-android/releases)), `.env` con `ANDROID_APP_ID=com.saucelabs.mydemoapp.android` y `ANDROID_SERIAL` si aplica. Ver [`docs/DEVICE.md`](docs/DEVICE.md).

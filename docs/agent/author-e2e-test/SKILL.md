@@ -60,7 +60,12 @@ The spec is the **source of truth** for phases 2–6. Read Gherkin and acceptanc
 From the spec's **Plan de automatización**:
 
 1. Create or extend `maestro/features/<Area>.feature` with the Gherkin scenarios.
-2. For each step, match `step-definitions/*.json` (**longest pattern wins**). Add new entries only for new steps; `"flow": null` for inline preconditions/assertions.
+2. For each step, match `step-definitions/*.json` (**longest pattern wins**).
+   - **Reuse** an existing pattern when it already fits — do not duplicate.
+   - **New step for an existing area** → add it to that area's JSON (e.g. `auth.json`).
+   - **New feature area** → create `step-definitions/<area>.json`; do not dump everything into one file.
+   - **Shared** navigation/assertions (`OpenApp`, `AssertVisibleText`, …) → `common.json`.
+   - Prefer one Gherkin step when a flow already does several UI actions (e.g. `abro el menú y pulso "X"` → open drawer + tap). Use `"flow": null` only for true documentary preconditions, not to duplicate that work.
 3. Parameterised steps: regex `pattern` + `params` → `--env` vars.
 
 Run `npm run validate` after edits.

@@ -5,7 +5,6 @@ Feature: About My Demo App
 
   Scenario: Abrir Sauce Labs desde About
     Given abro My Demo App en la pantalla principal
-    When abro el menú lateral
-    And pulso "About" en el menú
+    When abro el menú y pulso "About"
     And pulso el enlace al sitio de Sauce Labs
-    Then veo el texto "The World's Only Full-Lifecycle AI-Quality Platform"
+    Then veo el texto "Verify AI-generated code at the pace it's written."

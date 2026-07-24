@@ -37,10 +37,14 @@ describe('validate-step-defs', () => {
     assert.ok(problems.some(p => p.includes('capture group')))
   })
 
-  it('validates my-demo-app.json', () => {
-    const filePath = path.join(__dirname, '..', '..', 'step-definitions', 'my-demo-app.json')
-    const problems = validateStepDefinitionsFile(filePath)
-    assert.deepEqual(problems, [])
+  it('validates all step-definition JSON files', () => {
+    const dir = path.join(__dirname, '..', '..', 'step-definitions')
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && f !== 'schema.json')
+    assert.ok(files.length > 0)
+    for (const file of files) {
+      const problems = validateStepDefinitionsFile(path.join(dir, file))
+      assert.deepEqual(problems, [], file)
+    }
   })
 
   it('invalid temp file fails validation', () => {
@@ -57,7 +61,7 @@ describe('validate-step-defs', () => {
   })
 })
 
-describe('my-demo-app step patterns', () => {
+describe('demo step patterns (common / auth / webview / about)', () => {
   it('matches open app step', () => {
     const resolved = resolveStep('abro My Demo App en la pantalla principal')
     assert.equal(resolved.flow, 'OpenApp')
@@ -69,15 +73,14 @@ describe('my-demo-app step patterns', () => {
     assert.equal(resolved.params.TEXT, 'Products')
   })
 
-  it('treats open side menu as a null-flow precondition', () => {
-    const resolved = resolveStep('abro el menú lateral')
-    assert.equal(resolved.flow, null)
-  })
-
-  it('matches tap menu item step', () => {
-    const resolved = resolveStep('pulso "Log In" en el menú')
+  it('matches open menu and tap item step', () => {
+    const resolved = resolveStep('abro el menú y pulso "Log In"')
     assert.equal(resolved.flow, 'TapMenuItem')
     assert.equal(resolved.params.MENU_ITEM, 'Log In')
+  })
+
+  it('does not match the old shorter menu wording', () => {
+    assert.equal(resolveStepSafe('pulso "Log In" en el menú'), null)
   })
 
   it('matches login with credentials step', () => {

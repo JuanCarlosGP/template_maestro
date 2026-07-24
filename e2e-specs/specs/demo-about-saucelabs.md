@@ -19,7 +19,7 @@ Verificar que desde About se puede abrir el enlace a Sauce Labs en el navegador 
 2. Se abre el panel lateral con el botón hamburguesa.
 3. Se pulsa el apartado "About".
 4. Se pulsa el texto "Go to the Sauce Labs website." (redirige a navegador externo).
-5. Se verifica que aparece el texto "The World's Only Full-Lifecycle AI-Quality Platform".
+5. Se verifica que aparece el texto "Verify AI-generated code at the pace it's written.".
 
 ## Reconocimiento del entorno
 
@@ -40,12 +40,11 @@ Verificar que desde About se puede abrir el enlace a Sauce Labs en el navegador 
 - Menú: `id:…:id/menuIV`
 - Ítem: `text:'About'`
 - Link: `id:…:id/webTV` / `text:'Go to the Sauce Labs website.'` (a11y "Tap to view content of given url")
-- Headline Chrome: `text:'The World's Only Full-Lifecycle AI-Quality Platform'` (TextView en WebView)
+- Headline Chrome: `text:'Verify AI-generated code at the pace it's written.'` (TextView en WebView)
 - URL bar: `saucelabs.com` (`com.android.chrome:id/url_bar`)
 
 ### Flujos existentes reutilizables
 - `OpenApp`, `TapMenuItem`, `AssertVisibleText`
-- `abro el menú lateral` → `flow: null`
 
 ### Riesgos / blockers
 - **Navegador externo** (Chrome): el assert cruza de app; Maestro lo resolvió en scout con el mismo `appId` de My Demo App.
@@ -65,10 +64,9 @@ Feature: About My Demo App
 
   Scenario: Abrir Sauce Labs desde About
     Given abro My Demo App en la pantalla principal
-    When abro el menú lateral
-    And pulso "About" en el menú
+    When abro el menú y pulso "About"
     And pulso el enlace al sitio de Sauce Labs
-    Then veo el texto "The World's Only Full-Lifecycle AI-Quality Platform"
+    Then veo el texto "Verify AI-generated code at the pace it's written."
 ```
 
 > Ejecución: `npm run feature -- --feature maestro/features/MyDemoAppAbout.feature --platform android --no-publish`
@@ -76,7 +74,7 @@ Feature: About My Demo App
 ## Plan de automatización
 
 - Feature: `maestro/features/MyDemoAppAbout.feature`
-- Step-definitions: `step-definitions/my-demo-app.json` (nuevo: `pulso el enlace al sitio de Sauce Labs` → `TapSauceLabsWebsiteLink` | reutiliza: OpenApp, TapMenuItem, AssertVisibleText)
+- Step-definitions: `step-definitions/about.json` (nuevo: `pulso el enlace al sitio de Sauce Labs` → `TapSauceLabsWebsiteLink`) | reutiliza `common.json`: OpenApp, TapMenuItem, AssertVisibleText
 - Flows: `TapSauceLabsWebsiteLink` (+ `android/`: tap `webTV`, wait headline o URL)
 - Reutiliza: `OpenApp`, `TapMenuItem`, `AssertVisibleText`
 
@@ -88,7 +86,7 @@ Feature: About My Demo App
 ## Selectores clave
 
 - About link: `id:com.saucelabs.mydemoapp.android:id/webTV` — scout
-- Headline: `text:'The World's Only Full-Lifecycle AI-Quality Platform'` — scout
+- Headline: `text:'Verify AI-generated code at the pace it's written.'` — scout
 
 ## Decisiones
 
@@ -122,10 +120,10 @@ Feature: About My Demo App
 | Criterio / HU | Paso Gherkin | Flow / aserción | ¿Suficiente? |
 |---------------|--------------|-----------------|--------------|
 | Entrar en la app | abro My Demo App… | OpenApp | sí |
-| Abrir panel lateral | abro el menú + pulso About | TapMenuItem → menuIV | sí |
-| Pulsar About | pulso "About" en el menú | TapMenuItem MENU_ITEM=About | sí |
+| Abrir panel lateral y About | abro el menú y pulso "About" | TapMenuItem → menuIV + About | sí |
+| Pulsar About | abro el menú y pulso "About" | TapMenuItem MENU_ITEM=About | sí |
 | Pulsar enlace Sauce Labs | pulso el enlace al sitio de Sauce Labs | TapSauceLabsWebsiteLink → webTV | sí |
-| Headline en navegador | veo el texto "The World's Only…" | AssertVisibleText (+ wait en flow) | sí — Chrome externo |
+| Headline en navegador | veo el texto "Verify AI-generated code…" | AssertVisibleText (+ wait en flow) | sí — Chrome externo |
 
 ### Huecos detectados
 - (ninguno) respecto a la HU; iOS diferido
