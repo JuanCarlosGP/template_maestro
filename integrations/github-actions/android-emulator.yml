@@ -94,6 +94,10 @@ jobs:
             echo "No $HOME/.maestro/tests directory"
           fi
 
+      - name: Write CI summary
+        if: always()
+        run: node maestro/scripts/ci-write-summary.js
+
       - name: Upload reports
         if: always()
         uses: actions/upload-artifact@v6
