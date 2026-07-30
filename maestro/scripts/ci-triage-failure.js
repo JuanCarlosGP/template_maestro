@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * CI failure triage via Cursor SDK (local agent on the runner).
- * Reads reports/summary.json + Maestro screenshots, writes reports/ci-triage.md,
+ * CI failure triage via agent SDK (local on the runner).
+ * Reads reports/summary.json + Maestro screenshots, writes a short reports/ci-triage.md,
  * and may apply a minimal fix (e.g. stale assertion text). Does not commit.
  *
  * Env:
- *   CURSOR_API_KEY  — required
+ *   AGENT_API_KEY   — required (generic name; value is the agent provider key)
  *   REPORT_DIR      — default reports
  *   CI_TRIAGE_APPLY — "1" to allow editing flows/features (default 1 in CI)
  */
@@ -15,9 +15,9 @@ const fs = require('fs')
 const path = require('path')
 
 async function main() {
-  const apiKey = process.env.CURSOR_API_KEY
+  const apiKey = process.env.AGENT_API_KEY
   if (!apiKey) {
-    console.error('CURSOR_API_KEY is not set — skip triage')
+    console.error('AGENT_API_KEY is not set — skip triage')
     process.exit(0)
   }
 
@@ -67,34 +67,42 @@ async function main() {
   const apply = (process.env.CI_TRIAGE_APPLY || '1') === '1'
   const triageOut = path.join(reportDir, 'ci-triage.md')
 
-  const prompt = `Eres el agente de triage de fallos E2E en CI del Izertis Maestro Template.
+  const prompt = `Eres el Agente de triage de fallos E2E en CI (Izertis Maestro Template).
+Diagnóstico solo (docs/agent/debug-flow): NO relances emulador ni Maestro.
 
-Sigue la fase de diagnóstico de docs/agent/debug-flow/SKILL.md (NO relances el emulador ni Maestro).
-NO uses el playbook sanity-reviewer (ese es post-verde / cobertura HU).
-
-## Fallos (de reports/summary.json)
+## Fallos
 ${JSON.stringify(failed, null, 2)}
 
-## Screenshots disponibles (léelas si hace falta)
+## Screenshots
 ${screenshots.length ? screenshots.map((p) => `- ${p}`).join('\n') : '(ninguna)'}
 
-## Flows / features a revisar
+## Archivos a revisar
 ${[...flowHints].map((x) => `- ${x}`).join('\n') || '(ver summary)'}
 
-## Tareas
-1. Identifica la causa más probable (copy/assert desactualizado, selector, timing, flaky externo, etc.).
-2. Escribe el informe en español en \`${triageOut}\` con:
-   - Veredicto
-   - Escenario(s) fallidos
-   - Causa probable
-   - Evidencia (screenshot / step)
-   - Fix propuesto (archivos y cambio concreto)
-   - Riesgo si se aplica
-3. ${apply
-    ? `Si la causa es claramente un texto/assert desactualizado (p. ej. marketing de una web externa) y puedes inferir el texto nuevo con alta confianza desde la screenshot o el contexto, APLICA el cambio mínimo en el YAML del flow y/o el .feature. No toques otros archivos. No hagas commit ni push.`
-    : `NO modifiques archivos del repo; solo escribe el informe.`}
+## Obligatorio: escribe EXACTAMENTE este informe corto en español en \`${triageOut}\`
+Máximo ~15 líneas. Sin relleno. Plantilla:
 
-Responde en el chat con un resumen breve al terminar.`
+\`\`\`markdown
+## Agente — triage E2E
+
+**Qué pasa:** <1 frase clara>
+
+**Escenario:** <nombre>
+
+**Causa probable:** <1 frase>
+
+**Cómo arreglarlo:**
+1. <acción concreta (archivo + cambio)>
+2. <alternativa breve>
+
+**Screenshot:** \`<ruta relativa bajo reports/ si existe, o "no disponible">\`
+\`\`\`
+
+${apply
+    ? 'Si el fallo es claramente un texto/assert desactualizado y ves el texto nuevo en la screenshot con alta confianza, aplica el cambio mínimo en el flow YAML y/o .feature. No toques nada más. No hagas commit.'
+    : 'No modifiques el repo; solo el informe.'}
+
+Al terminar, responde en chat con 2-3 líneas máximo.`
 
   let Agent
   let CursorAgentError
@@ -114,11 +122,11 @@ Responde en el chat con un resumen breve al terminar.`
       local: { cwd: process.cwd() },
     })
     console.log('agent status:', result.status)
-    if (result.result) console.log(String(result.result).slice(0, 4000))
+    if (result.result) console.log(String(result.result).slice(0, 1500))
     if (result.status === 'error') process.exit(2)
   } catch (err) {
     if (err instanceof CursorAgentError) {
-      console.error('CursorAgentError:', err.message, 'retryable=', err.isRetryable)
+      console.error('Agent startup/run error:', err.message, 'retryable=', err.isRetryable)
       process.exit(1)
     }
     throw err
@@ -128,7 +136,7 @@ Responde en el chat con un resumen breve al terminar.`
     const md = fs.readFileSync(triageOut, 'utf8')
     const summaryFile = process.env.GITHUB_STEP_SUMMARY
     if (summaryFile) {
-      fs.appendFileSync(summaryFile, `\n## CI triage (Cursor)\n\n${md}\n`)
+      fs.appendFileSync(summaryFile, `\n${md}\n`)
     }
     console.log(`Wrote ${triageOut}`)
   } else {
