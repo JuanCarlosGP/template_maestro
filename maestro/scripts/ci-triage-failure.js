@@ -1,21 +1,74 @@
 #!/usr/bin/env node
 /**
  * CI failure triage via a pluggable agent provider (vendor-neutral).
- * Reads reports/summary.json + Maestro screenshots, writes a short reports/ci-triage.md,
- * and may apply a minimal fix (e.g. stale assertion text). Does not commit.
+ * Report-only: reads reports/summary.json + Maestro screenshots (+ live Maestro MCP
+ * when a device is still connected), writes reports/ci-triage.md and a short
+ * "Solución sugerida" into the Job Summary. Never edits features/flows; no PRs.
  *
  * Env:
- *   AGENT_API_KEY     — required (provider API key; store as CI secret)
- *   AGENT_PROVIDER    — optional adapter id (default: cursor — only one wired for now)
- *   REPORT_DIR        — default reports
- *   CI_TRIAGE_APPLY   — "1" to allow editing flows/features (default 1 in CI)
+ *   AGENT_API_KEY       — required (provider API key; store as CI secret)
+ *   AGENT_PROVIDER      — optional adapter id (default: cursor — only one wired for now)
+ *   AGENT_MAESTRO_MCP   — "1" (default) attach Maestro MCP; "0" to disable
+ *   REPORT_DIR          — default reports
  */
 'use strict'
 
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
 const { listScenarioResults } = require('./lib/playwright-report')
 const { loadAgentProvider } = require('./lib/agent-providers')
+
+function maestroMcpConfig() {
+  if ((process.env.AGENT_MAESTRO_MCP || '1') === '0') return undefined
+  const bin =
+    process.env.MAESTRO_BIN ||
+    path.join(os.homedir(), '.maestro', 'bin', process.platform === 'win32' ? 'maestro.bat' : 'maestro')
+  return {
+    maestro: {
+      type: 'stdio',
+      command: bin,
+      args: ['mcp', '--no-viewer', '--working-dir', process.cwd()],
+    },
+  }
+}
+
+function extractSuggestedFix(md) {
+  const lines = String(md || '').split(/\r?\n/)
+  for (const line of lines) {
+    const m = line.match(/^\*\*Soluci[oó]n sugerida:\*\*\s*(.+)\s*$/i)
+    if (m) return m[1].trim()
+  }
+  for (const line of lines) {
+    const m = line.match(/^\*\*C[oó]mo arreglarlo:\*\*\s*$/i)
+    if (m) continue
+  }
+  const howto = md.match(/\*\*C[oó]mo arreglarlo:\*\*\s*\n+1\.\s*(.+)/i)
+  if (howto) return howto[1].trim()
+  return null
+}
+
+function appendBriefToSummaries(brief, triagePath) {
+  const block = `## Solución sugerida (Agente)
+
+${brief}
+
+Detalle: \`${path.relative(process.cwd(), triagePath).replace(/\\/g, '/')}\`
+`
+
+  const reportDir = path.dirname(triagePath)
+  const ciSummary = path.join(reportDir, 'ci-summary.md')
+  if (fs.existsSync(ciSummary)) {
+    let existing = fs.readFileSync(ciSummary, 'utf8')
+    existing = existing.replace(/\nVer detalle del Agente[^\n]*\n?/g, '\n')
+    fs.writeFileSync(ciSummary, `${existing.trimEnd()}\n\n${block}\n`, 'utf8')
+  }
+
+  const summaryFile = process.env.GITHUB_STEP_SUMMARY
+  if (summaryFile) {
+    fs.appendFileSync(summaryFile, `\n${block}\n`)
+  }
+}
 
 async function main() {
   const apiKey = process.env.AGENT_API_KEY
@@ -60,9 +113,9 @@ async function main() {
     if (f.featureFile) flowHints.add(`maestro/features/${f.featureFile}`)
   }
 
-  const apply = (process.env.CI_TRIAGE_APPLY || '1') === '1'
   const triageOut = path.join(reportDir, 'ci-triage.md')
   const providerName = process.env.AGENT_PROVIDER || 'cursor'
+  const mcpServers = maestroMcpConfig()
 
   let provider
   try {
@@ -73,16 +126,23 @@ async function main() {
   }
 
   const prompt = `Eres el Agente de triage de fallos E2E en CI (Izertis Maestro Template).
-Diagnóstico solo (docs/agent/debug-flow): NO relances emulador ni Maestro.
+Modo INFORME SOLAMENTE: no edites archivos, no hagas commit ni PR, no relances Maestro ni el emulador como suite completa.
 
 ## Fallos
 ${JSON.stringify(failed, null, 2)}
 
-## Screenshots
+## Screenshots en disco
 ${screenshots.length ? screenshots.map((p) => `- ${p}`).join('\n') : '(ninguna)'}
 
-## Archivos a revisar
+## Archivos a revisar (solo lectura)
 ${[...flowHints].map((x) => `- ${x}`).join('\n') || '(ver summary)'}
+
+## Maestro MCP
+${
+  mcpServers
+    ? `Tienes el servidor MCP \`maestro\`. Úsalo para confirmar la causa (p. ej. jerarquía / texto visible en pantalla si el diálogo del fallo sigue abierto). Si MCP falla o no hay device, basate en screenshots + YAML/.feature.`
+    : `Maestro MCP desactivado — usa screenshots + YAML/.feature.`
+}
 
 ## Obligatorio: escribe EXACTAMENTE este informe corto en español en \`${triageOut}\`
 Máximo ~15 líneas. Sin relleno. Plantilla:
@@ -96,25 +156,26 @@ Máximo ~15 líneas. Sin relleno. Plantilla:
 
 **Causa probable:** <1 frase>
 
-**Cómo arreglarlo:**
-1. <acción concreta (archivo + cambio)>
-2. <alternativa breve>
+**Solución sugerida:** <1 frase concreta: archivo + cambio recomendado. NO digas "ya aplicado".>
+
+**Cómo comprobarlo:** <1 frase; p. ej. qué mirar en screenshot o en MCP>
 
 **Screenshot:** \`<ruta relativa bajo reports/ si existe, o "no disponible">\`
 \`\`\`
 
-${apply
-    ? 'Si el fallo es claramente un texto/assert desactualizado y ves el texto nuevo en la screenshot con alta confianza, aplica el cambio mínimo en el flow YAML y/o .feature. No toques nada más. No hagas commit.'
-    : 'No modifiques el repo; solo el informe.'}
-
 Al terminar, responde en chat con 2-3 líneas máximo.`
 
   console.log(
-    `Triaging ${failed.length} failed scenario(s); provider=${provider.id}; screenshots=${screenshots.length}; apply=${apply}`,
+    `Triaging ${failed.length} failed scenario(s); provider=${provider.id}; screenshots=${screenshots.length}; maestroMcp=${Boolean(mcpServers)}; apply=false`,
   )
 
   try {
-    const result = await provider.prompt(prompt, { apiKey, cwd: process.cwd() })
+    const result = await provider.prompt(prompt, {
+      apiKey,
+      cwd: process.cwd(),
+      mcpServers,
+      mode: 'plan',
+    })
     console.log('agent status:', result.status)
     if (result.result) console.log(String(result.result).slice(0, 1500))
     if (result.status === 'error') process.exit(2)
@@ -133,6 +194,14 @@ Al terminar, responde en chat con 2-3 líneas máximo.`
       fs.appendFileSync(summaryFile, `\n${md}\n`)
     }
     console.log(`Wrote ${triageOut}`)
+
+    const brief = extractSuggestedFix(md)
+    if (brief) {
+      appendBriefToSummaries(brief, triageOut)
+      console.log('Solución sugerida:', brief)
+    } else {
+      console.warn('No **Solución sugerida:** line found in ci-triage.md')
+    }
   } else {
     console.warn(`Agent finished but ${triageOut} was not created`)
   }

@@ -7,7 +7,17 @@
  */
 
 /**
- * @typedef {{ prompt: (text: string, opts: { apiKey: string, cwd: string }) => Promise<{ status: string, result?: string }> }} AgentProvider
+ * @typedef {{
+ *   prompt: (
+ *     text: string,
+ *     opts: {
+ *       apiKey: string,
+ *       cwd: string,
+ *       mcpServers?: Record<string, unknown>,
+ *       mode?: string,
+ *     },
+ *   ) => Promise<{ status: string, result?: string }>
+ * }} AgentProvider
  */
 
 /**
@@ -31,15 +41,36 @@ function loadAgentProvider(name) {
     }
     return {
       id: 'cursor',
-      async prompt(text, { apiKey, cwd }) {
+      async prompt(text, { apiKey, cwd, mcpServers, mode }) {
         try {
-          const result = await Agent.prompt(text, {
+          /** @type {Record<string, unknown>} */
+          const options = {
             apiKey,
             model: { id: 'composer-2.5' },
+            // plan = advise without treating the run as an edit session
+            mode: mode === 'agent' ? 'agent' : 'plan',
             local: { cwd },
-          })
+          }
+          if (mcpServers && Object.keys(mcpServers).length) {
+            options.mcpServers = mcpServers
+          }
+          const result = await Agent.prompt(text, options)
           return { status: result.status, result: result.result }
         } catch (e) {
+          // Older SDKs may reject mode "plan" — retry once without it.
+          if (mode !== 'agent' && /mode|plan/i.test(String(e && e.message))) {
+            try {
+              const result = await Agent.prompt(text, {
+                apiKey,
+                model: { id: 'composer-2.5' },
+                local: { cwd },
+                ...(mcpServers && Object.keys(mcpServers).length ? { mcpServers } : {}),
+              })
+              return { status: result.status, result: result.result }
+            } catch (e2) {
+              e = e2
+            }
+          }
           if (AgentError && e instanceof AgentError) {
             const err = new Error(e.message || 'Agent provider error')
             err.code = 'AGENT_PROVIDER_ERROR'

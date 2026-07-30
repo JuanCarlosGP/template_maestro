@@ -65,7 +65,7 @@ function main() {
   }
 
   if (!ok) {
-    lines.push('Ver detalle del Agente en `ci-triage.md` si el step de triage corrió.')
+    lines.push('Si el triage del Agente corrió, verás debajo **Solución sugerida** y el detalle en `ci-triage.md`.')
     lines.push('')
   }
 
