@@ -47,8 +47,8 @@ function loadAgentProvider(name) {
           const options = {
             apiKey,
             model: { id: 'composer-2.5' },
-            // plan = advise without treating the run as an edit session
-            mode: mode === 'agent' ? 'agent' : 'plan',
+            // agent mode can write reports/ci-triage.md; prompt forbids other edits
+            mode: mode === 'plan' ? 'plan' : 'agent',
             local: { cwd },
           }
           if (mcpServers && Object.keys(mcpServers).length) {
@@ -57,20 +57,6 @@ function loadAgentProvider(name) {
           const result = await Agent.prompt(text, options)
           return { status: result.status, result: result.result }
         } catch (e) {
-          // Older SDKs may reject mode "plan" — retry once without it.
-          if (mode !== 'agent' && /mode|plan/i.test(String(e && e.message))) {
-            try {
-              const result = await Agent.prompt(text, {
-                apiKey,
-                model: { id: 'composer-2.5' },
-                local: { cwd },
-                ...(mcpServers && Object.keys(mcpServers).length ? { mcpServers } : {}),
-              })
-              return { status: result.status, result: result.result }
-            } catch (e2) {
-              e = e2
-            }
-          }
           if (AgentError && e instanceof AgentError) {
             const err = new Error(e.message || 'Agent provider error')
             err.code = 'AGENT_PROVIDER_ERROR'

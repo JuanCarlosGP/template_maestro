@@ -34,17 +34,29 @@ function maestroMcpConfig() {
 }
 
 function extractSuggestedFix(md) {
-  const lines = String(md || '').split(/\r?\n/)
+  const text = String(md || '')
+  const lines = text.split(/\r?\n/)
   for (const line of lines) {
     const m = line.match(/^\*\*Soluci[oó]n sugerida:\*\*\s*(.+)\s*$/i)
     if (m) return m[1].trim()
   }
-  for (const line of lines) {
-    const m = line.match(/^\*\*C[oó]mo arreglarlo:\*\*\s*$/i)
-    if (m) continue
-  }
-  const howto = md.match(/\*\*C[oó]mo arreglarlo:\*\*\s*\n+1\.\s*(.+)/i)
+  const howto = text.match(/\*\*C[oó]mo arreglarlo:\*\*\s*\n+(?:1\.\s*)?(.+)/i)
   if (howto) return howto[1].trim()
+  return null
+}
+
+/** Pull a markdown report out of free-form agent chat if the file was not written. */
+function extractReportMarkdown(chat) {
+  const text = String(chat || '')
+  const fenced = text.match(/```(?:markdown|md)?\s*\n(##\s*Agente[\s\S]*?)```/i)
+  if (fenced) return fenced[1].trim() + '\n'
+  const start = text.search(/^##\s*Agente/m)
+  if (start >= 0) {
+    const slice = text.slice(start).trim()
+    if (/\*\*Soluci[oó]n sugerida:\*\*/i.test(slice) || /\*\*Qu[eé] pasa:\*\*/i.test(slice)) {
+      return slice + '\n'
+    }
+  }
   return null
 }
 
@@ -60,13 +72,39 @@ Detalle: \`${path.relative(process.cwd(), triagePath).replace(/\\/g, '/')}\`
   const ciSummary = path.join(reportDir, 'ci-summary.md')
   if (fs.existsSync(ciSummary)) {
     let existing = fs.readFileSync(ciSummary, 'utf8')
-    existing = existing.replace(/\nVer detalle del Agente[^\n]*\n?/g, '\n')
+    existing = existing
+      .replace(/\nSi el triage del Agente[^\n]*\n?/g, '\n')
+      .replace(/\nVer detalle del Agente[^\n]*\n?/g, '\n')
     fs.writeFileSync(ciSummary, `${existing.trimEnd()}\n\n${block}\n`, 'utf8')
   }
 
   const summaryFile = process.env.GITHUB_STEP_SUMMARY
   if (summaryFile) {
     fs.appendFileSync(summaryFile, `\n${block}\n`)
+  }
+}
+
+function publishTriage(triageOut, md) {
+  fs.mkdirSync(path.dirname(triageOut), { recursive: true })
+  fs.writeFileSync(triageOut, md.endsWith('\n') ? md : `${md}\n`, 'utf8')
+
+  const summaryFile = process.env.GITHUB_STEP_SUMMARY
+  if (summaryFile) {
+    fs.appendFileSync(summaryFile, `\n${md}\n`)
+  }
+  console.log(`Wrote ${triageOut}`)
+
+  const brief = extractSuggestedFix(md)
+  if (brief) {
+    appendBriefToSummaries(brief, triageOut)
+    console.log('Solución sugerida:', brief)
+  } else {
+    console.warn('No **Solución sugerida:** line found in triage markdown')
+    // Still surface something in the Job Summary.
+    appendBriefToSummaries(
+      'Ver informe completo en ci-triage.md (el agente no rellenó la línea Solución sugerida).',
+      triageOut,
+    )
   }
 }
 
@@ -114,6 +152,7 @@ async function main() {
   }
 
   const triageOut = path.join(reportDir, 'ci-triage.md')
+  const triageRel = path.relative(process.cwd(), triageOut).replace(/\\/g, '/')
   const providerName = process.env.AGENT_PROVIDER || 'cursor'
   const mcpServers = maestroMcpConfig()
 
@@ -126,7 +165,12 @@ async function main() {
   }
 
   const prompt = `Eres el Agente de triage de fallos E2E en CI (Izertis Maestro Template).
-Modo INFORME SOLAMENTE: no edites archivos, no hagas commit ni PR, no relances Maestro ni el emulador como suite completa.
+
+## Reglas estrictas
+- ÚNICO archivo que puedes crear/modificar: \`${triageRel}\`
+- NO toques \`maestro/features\`, flows YAML, step-definitions, workflows ni package.json
+- NO hagas commit ni PR
+- NO relances la suite Maestro completa
 
 ## Fallos
 ${JSON.stringify(failed, null, 2)}
@@ -140,12 +184,12 @@ ${[...flowHints].map((x) => `- ${x}`).join('\n') || '(ver summary)'}
 ## Maestro MCP
 ${
   mcpServers
-    ? `Tienes el servidor MCP \`maestro\`. Úsalo para confirmar la causa (p. ej. jerarquía / texto visible en pantalla si el diálogo del fallo sigue abierto). Si MCP falla o no hay device, basate en screenshots + YAML/.feature.`
+    ? `Tienes MCP \`maestro\`. Úsalo si ayuda a confirmar el texto/selector en pantalla. Si falla o no hay device, usa screenshots + YAML/.feature.`
     : `Maestro MCP desactivado — usa screenshots + YAML/.feature.`
 }
 
-## Obligatorio: escribe EXACTAMENTE este informe corto en español en \`${triageOut}\`
-Máximo ~15 líneas. Sin relleno. Plantilla:
+## Entrega (obligatoria)
+1. Escribe el fichero \`${triageRel}\` con EXACTAMENTE esta plantilla en español (máx ~15 líneas):
 
 \`\`\`markdown
 ## Agente — triage E2E
@@ -156,25 +200,26 @@ Máximo ~15 líneas. Sin relleno. Plantilla:
 
 **Causa probable:** <1 frase>
 
-**Solución sugerida:** <1 frase concreta: archivo + cambio recomendado. NO digas "ya aplicado".>
+**Solución sugerida:** <1 frase concreta: archivo + cambio recomendado. Nunca digas "ya aplicado".>
 
-**Cómo comprobarlo:** <1 frase; p. ej. qué mirar en screenshot o en MCP>
+**Cómo comprobarlo:** <1 frase>
 
 **Screenshot:** \`<ruta relativa bajo reports/ si existe, o "no disponible">\`
 \`\`\`
 
-Al terminar, responde en chat con 2-3 líneas máximo.`
+2. Responde en chat pegando el mismo markdown (por si el write falla).`
 
   console.log(
     `Triaging ${failed.length} failed scenario(s); provider=${provider.id}; screenshots=${screenshots.length}; maestroMcp=${Boolean(mcpServers)}; apply=false`,
   )
 
+  let result
   try {
-    const result = await provider.prompt(prompt, {
+    result = await provider.prompt(prompt, {
       apiKey,
       cwd: process.cwd(),
       mcpServers,
-      mode: 'plan',
+      mode: 'agent',
     })
     console.log('agent status:', result.status)
     if (result.result) console.log(String(result.result).slice(0, 1500))
@@ -188,23 +233,19 @@ Al terminar, responde en chat con 2-3 líneas máximo.`
   }
 
   if (fs.existsSync(triageOut)) {
-    const md = fs.readFileSync(triageOut, 'utf8')
-    const summaryFile = process.env.GITHUB_STEP_SUMMARY
-    if (summaryFile) {
-      fs.appendFileSync(summaryFile, `\n${md}\n`)
-    }
-    console.log(`Wrote ${triageOut}`)
-
-    const brief = extractSuggestedFix(md)
-    if (brief) {
-      appendBriefToSummaries(brief, triageOut)
-      console.log('Solución sugerida:', brief)
-    } else {
-      console.warn('No **Solución sugerida:** line found in ci-triage.md')
-    }
-  } else {
-    console.warn(`Agent finished but ${triageOut} was not created`)
+    publishTriage(triageOut, fs.readFileSync(triageOut, 'utf8'))
+    return
   }
+
+  const fromChat = extractReportMarkdown(result && result.result)
+  if (fromChat) {
+    console.warn(`Agent did not write ${triageRel}; recovering report from chat output`)
+    publishTriage(triageOut, fromChat)
+    return
+  }
+
+  console.warn(`Agent finished but ${triageOut} was not created and chat had no usable report`)
+  process.exit(0)
 }
 
 main().catch((err) => {
