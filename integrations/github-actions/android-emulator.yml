@@ -79,6 +79,8 @@ jobs:
             maestro --version
             adb devices -l
             adb install -r build/android/demo.apk
+            adb shell 'echo "chrome --disable-fre --no-first-run --no-default-browser-check" > /data/local/tmp/chrome-command-line'
+            adb shell am set-debug-app --persistent com.android.chrome
             npm run feature -- --feature-dir maestro/features --platform android --android-app-id "${ANDROID_APP_ID}" --no-publish
 
       - name: Collect Maestro failure screenshots
