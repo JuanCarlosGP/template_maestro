@@ -46,13 +46,13 @@ After `gherkin-runner` completes, the default output directory is `reports/` (ov
 
 | File | Purpose |
 |------|---------|
-| `reports/summary.json` | Rich run report (Playwright-like): stats, timings, Gherkin steps, Maestro flows, attachments |
+| `reports/summary.json` | Playwright-oriented **`JSONReport`** shape (`config`, `suites` → `specs` → `tests` → `results`, `stats`) for tooling interoperability |
 | `reports/junit.xml` | Standard JUnit for CI test tabs (`time`, `classname`, failures) |
 | `reports/index.html` | Local HTML viewer (open in browser after a run) |
 
-`summary.json` keeps top-level `passed` / `failed` for compatibility and adds a `stats` block (`expected` / `unexpected` / `duration`) plus per-scenario `steps`, `flows`, and `durationMs`.
+`summary.json` follows Playwright’s JSON reporter nesting as closely as practical (including `stats.expected` / `unexpected` / `flaky` / `skipped`). Maestro extras (flows, feature file) ride in test annotations (`maestro.flows`, `maestro.featureFile`). It is **not** a Playwright Trace and will **not** open in `playwright show-report` / [trace.playwright.dev](https://trace.playwright.dev/) (those need Playwright’s blob/trace pipeline).
 
-The HTML viewer template is versioned at `maestro/scripts/report-viewer/template.html`; each run writes a self-contained `reports/index.html` with the summary embedded (works with `file://`).
+The HTML viewer template is versioned at `maestro/scripts/report-viewer/template.html`; each run writes a self-contained `reports/index.html` with an **internal** payload embedded (same look as before — not the on-disk Playwright JSON). Works with `file://`.
 
 Disable with `--no-reports` when iterating locally.
 

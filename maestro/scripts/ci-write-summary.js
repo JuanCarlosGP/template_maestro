@@ -11,6 +11,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const { listScenarioResults } = require('./lib/playwright-report')
 
 function fmtSec(ms) {
   if (ms == null || Number.isNaN(Number(ms))) return '—'
@@ -37,9 +38,12 @@ function main() {
   }
 
   const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
-  const passed = summary.passed ?? summary.stats?.expected ?? 0
-  const failed = summary.failed ?? summary.stats?.unexpected ?? 0
-  const duration = summary.durationMs ?? summary.stats?.duration
+  const results = listScenarioResults(summary)
+  const passed = summary.stats?.expected
+    ?? results.filter((r) => r.status === 'passed').length
+  const failed = summary.stats?.unexpected
+    ?? results.filter((r) => r.status === 'failed').length
+  const duration = summary.stats?.duration
   const ok = failed === 0
   const lines = []
 
@@ -49,19 +53,12 @@ function main() {
   lines.push(`**Resumen:** ${passed} passed · ${failed} failed · ${fmtSec(duration)}`)
   lines.push('')
 
-  const results = []
-  for (const platform of summary.platforms || []) {
-    for (const r of platform.results || []) {
-      results.push({ platform: platform.name, ...r })
-    }
-  }
-
   if (results.length) {
     lines.push('| Escenario | Plataforma | Resultado | Tiempo |')
     lines.push('|-----------|------------|-----------|--------|')
     for (const r of results) {
       const name = String(r.title || r.scenario || '—').replace(/\|/g, '\\|')
-      const status = r.status === 'passed' ? 'PASS' : 'FAIL'
+      const status = r.status === 'passed' ? 'PASS' : r.status === 'skipped' ? 'SKIP' : 'FAIL'
       lines.push(`| ${name} | ${r.platform || '—'} | ${status} | ${fmtSec(r.durationMs)} |`)
     }
     lines.push('')

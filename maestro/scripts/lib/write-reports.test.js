@@ -2,7 +2,8 @@
 
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
-const { buildRunSummary, buildJUnitXml, buildStepReports } = require('./write-reports')
+const { buildRunSummary, buildJUnitXml, buildStepReports, writeReports } = require('./write-reports')
+const { toPlaywrightReport, listScenarioResults } = require('./playwright-report')
 
 const fixture = {
   startedAt: '2026-07-01T10:00:00.000Z',
@@ -141,7 +142,6 @@ describe('write-reports', () => {
     const fs = require('fs')
     const os = require('os')
     const path = require('path')
-    const { writeReports } = require('./write-reports')
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'maestro-reports-'))
     try {
       const summary = buildRunSummary(fixture)
@@ -153,8 +153,63 @@ describe('write-reports', () => {
       assert.match(html, /Izertis · Maestro run/)
       assert.match(html, /"passed":\s*1/)
       assert.doesNotMatch(html, /%%MAESTRO_REPORT_JSON%%/)
+      // On-disk summary.json is Playwright JSONReport
+      const onDisk = JSON.parse(fs.readFileSync(paths.jsonPath, 'utf-8'))
+      assert.ok(Array.isArray(onDisk.suites))
+      assert.equal(onDisk.stats.expected, 1)
+      assert.equal(onDisk.stats.unexpected, 1)
+      // HTML embed remains internal platforms shape
+      assert.match(html, /"platforms"/)
     } finally {
       fs.rmSync(dir, { recursive: true, force: true })
     }
+  })
+
+  it('toPlaywrightReport maps internal summary to JSONReport shape', () => {
+    const summary = buildRunSummary(fixture)
+    const pw = toPlaywrightReport(summary)
+    assert.ok(pw.config)
+    assert.ok(Array.isArray(pw.config.projects))
+    assert.equal(pw.config.projects[0].name, 'android')
+    assert.ok(Array.isArray(pw.suites))
+    assert.equal(pw.suites.length, 1)
+    assert.equal(pw.suites[0].file, 'maestro/features/Demo.feature')
+    assert.equal(pw.suites[0].specs.length, 2)
+
+    const passSpec = pw.suites[0].specs.find((s) => s.title === 'DemoLogin')
+    assert.equal(passSpec.ok, true)
+    assert.equal(passSpec.tests[0].status, 'expected')
+    assert.equal(passSpec.tests[0].projectName, 'android')
+    assert.equal(passSpec.tests[0].results[0].status, 'passed')
+    assert.equal(passSpec.tests[0].results[0].steps.length, 3)
+
+    const failSpec = pw.suites[0].specs.find((s) => s.title === 'Login parametrizado (#1)')
+    assert.equal(failSpec.ok, false)
+    assert.equal(failSpec.tests[0].status, 'unexpected')
+    assert.equal(failSpec.tests[0].results[0].status, 'failed')
+    assert.equal(failSpec.tests[0].results[0].error.message, 'Element not found')
+    assert.equal(failSpec.tests[0].results[0].attachments[0].path, '/tmp/shot.png')
+
+    assert.equal(pw.stats.expected, 1)
+    assert.equal(pw.stats.unexpected, 1)
+    assert.equal(pw.stats.duration, 300000)
+  })
+
+  it('listScenarioResults reads Playwright and legacy internal shapes', () => {
+    const summary = buildRunSummary(fixture)
+    const fromInternal = listScenarioResults(summary)
+    assert.equal(fromInternal.length, 2)
+    assert.equal(fromInternal[0].status, 'passed')
+    assert.equal(fromInternal[1].status, 'failed')
+
+    const pw = toPlaywrightReport(summary)
+    const fromPw = listScenarioResults(pw)
+    assert.equal(fromPw.length, 2)
+    assert.equal(fromPw[0].title, 'DemoLogin')
+    assert.equal(fromPw[0].platform, 'android')
+    assert.equal(fromPw[0].status, 'passed')
+    assert.equal(fromPw[1].status, 'failed')
+    assert.equal(fromPw[1].error, 'Element not found')
+    assert.equal(fromPw[1].flows[1].flow, 'LoginWithCredentials')
   })
 })

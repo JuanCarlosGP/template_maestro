@@ -291,6 +291,7 @@ function renderHtmlReport(summary) {
     throw new Error(`Report viewer template not found: ${templatePath}`)
   }
   const template = fs.readFileSync(templatePath, 'utf-8')
+  // Embed internal summary shape so template.html / viewer stay unchanged.
   const payload = JSON.stringify(summary).replace(/</g, '\\u003c')
   if (!template.includes('%%MAESTRO_REPORT_JSON%%')) {
     throw new Error('Report viewer template is missing %%MAESTRO_REPORT_JSON%% placeholder')
@@ -299,14 +300,17 @@ function renderHtmlReport(summary) {
 }
 
 function writeReports(summary, reportDir) {
+  const { toPlaywrightReport } = require('./playwright-report')
   fs.mkdirSync(reportDir, { recursive: true })
   const jsonPath = path.join(reportDir, 'summary.json')
   const xmlPath = path.join(reportDir, 'junit.xml')
   const htmlPath = path.join(reportDir, 'index.html')
-  fs.writeFileSync(jsonPath, JSON.stringify(summary, null, 2), 'utf-8')
+  // On-disk summary.json is Playwright JSONReport; HTML embed stays internal.
+  const playwrightJson = toPlaywrightReport(summary)
+  fs.writeFileSync(jsonPath, JSON.stringify(playwrightJson, null, 2), 'utf-8')
   fs.writeFileSync(xmlPath, buildJUnitXml(summary), 'utf-8')
   fs.writeFileSync(htmlPath, renderHtmlReport(summary), 'utf-8')
-  return { jsonPath, xmlPath, htmlPath }
+  return { jsonPath, xmlPath, htmlPath, playwrightJson }
 }
 
 module.exports = {

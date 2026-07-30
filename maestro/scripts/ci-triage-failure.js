@@ -13,6 +13,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const { listScenarioResults } = require('./lib/playwright-report')
 
 async function main() {
   const apiKey = process.env.AGENT_API_KEY
@@ -29,14 +30,7 @@ async function main() {
   }
 
   const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
-  const failed = []
-  for (const platform of summary.platforms || []) {
-    for (const r of platform.results || []) {
-      if (r.status === 'failed') {
-        failed.push({ platform: platform.name, ...r })
-      }
-    }
-  }
+  const failed = listScenarioResults(summary).filter((r) => r.status === 'failed')
 
   if (failed.length === 0) {
     console.log('No failed scenarios — skip triage')
