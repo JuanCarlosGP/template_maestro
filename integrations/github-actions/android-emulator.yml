@@ -79,9 +79,7 @@ jobs:
             maestro --version
             adb devices -l
             adb install -r build/android/demo.apk
-            # About (external Chrome / live site) excluded — flaky on CI emulators.
-            npm run feature -- --feature maestro/features/MyDemoAppAuth.feature --platform android --android-app-id "${ANDROID_APP_ID}" --no-publish
-            npm run feature -- --feature maestro/features/MyDemoAppWebView.feature --platform android --android-app-id "${ANDROID_APP_ID}" --no-publish
+            npm run feature -- --feature-dir maestro/features --platform android --android-app-id "${ANDROID_APP_ID}" --no-publish
 
       - name: Upload reports
         if: always()
