@@ -8,6 +8,6 @@ Feature: Autenticación My Demo App
     When abro el menú y pulso "Log In"
     And inicio sesión con usuario "bod@example.com" y contraseña "10203040"
     And abro el menú y pulso "Log Out"
-    Then veo el texto "Are you sure you want to logout"
+    Then veo el texto "Are you sure you want to sign out"
     When confirmo el logout en el diálogo
     Then veo el texto "Login"
