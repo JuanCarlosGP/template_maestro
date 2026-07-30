@@ -70,7 +70,7 @@ function loadAgentProvider(name) {
   }
 
   const err = new Error(
-    `Unknown AGENT_PROVIDER="${id}". Supported today: cursor (optional). Add another adapter under maestro/scripts/lib/agent-providers.js`,
+    `Unknown AGENT_PROVIDER="${id}". Supported today: cursor (optional). Add another adapter under maestro/scripts/ci/agent-providers.js`,
   )
   err.code = 'AGENT_PROVIDER_UNKNOWN'
   throw err

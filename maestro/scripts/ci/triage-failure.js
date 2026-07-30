@@ -16,8 +16,8 @@
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const { listScenarioResults } = require('./lib/playwright-report')
-const { loadAgentProvider } = require('./lib/agent-providers')
+const { listScenarioResults } = require('../lib/playwright-report')
+const { loadAgentProvider } = require('./agent-providers')
 
 function maestroMcpConfig() {
   if ((process.env.AGENT_MAESTRO_MCP || '1') === '0') return undefined

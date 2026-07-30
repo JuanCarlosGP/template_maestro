@@ -85,7 +85,7 @@ jobs:
           force-avd-creation: true
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          script: bash maestro/scripts/ci-run-android-emulator-e2e.sh
+          script: bash maestro/scripts/ci/run-android-emulator-e2e.sh
 
       - name: Upload reports
         if: always()

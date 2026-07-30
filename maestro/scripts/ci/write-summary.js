@@ -11,7 +11,7 @@
 
 const fs = require('fs')
 const path = require('path')
-const { listScenarioResults } = require('./lib/playwright-report')
+const { listScenarioResults } = require('../lib/playwright-report')
 
 function fmtSec(ms) {
   if (ms == null || Number.isNaN(Number(ms))) return '—'

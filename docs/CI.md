@@ -67,7 +67,7 @@ Configure in `.env` only if the client uses them:
 | Azure Test Plans | `AZURE_DEVOPS_*`, `AZURE_TEST_PLAN_ID`, `AZURE_TEST_SUITE_ID` | `publish-results.js` (runner, unless `--no-publish`) |
 | BrowserStack | `BROWSERSTACK_*` | `gherkin-runner --executor browserstack` |
 | Maestro Cloud | (client-specific) | direct Maestro CLI |
-| CI failure triage (optional) | `AGENT_API_KEY`, `AGENT_PROVIDER`, `AGENT_MAESTRO_MCP` | `ci-triage-failure.js` — report-only (no code edits/PRs); may use Maestro MCP while the AVD is still up; writes a short **Solución sugerida** into the Job Summary |
+| CI failure triage (optional) | `AGENT_API_KEY`, `AGENT_PROVIDER`, `AGENT_MAESTRO_MCP` | [`maestro/scripts/ci/`](../maestro/scripts/ci/) — report-only (no code edits/PRs); may use Maestro MCP while the AVD is still up; writes a short **Solución sugerida** into the Job Summary |
 
 ## Example pipelines
 

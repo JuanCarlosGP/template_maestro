@@ -96,7 +96,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           # One bash process so FEATURE_EXIT and triage keep the AVD (Maestro MCP).
-          script: bash maestro/scripts/ci-run-android-emulator-e2e.sh
+          script: bash maestro/scripts/ci/run-android-emulator-e2e.sh
 
       - name: Upload reports
         if: always()
