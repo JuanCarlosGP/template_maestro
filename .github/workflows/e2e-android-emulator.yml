@@ -9,6 +9,14 @@ on:
     # 03:00 UTC daily
     - cron: '0 3 * * *'
   workflow_dispatch:
+  # Helps register/run on personal repos; remove if you only want cron/manual.
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/e2e-android-emulator.yml'
+      - 'maestro/**'
+      - 'package.json'
+      - 'package-lock.json'
 
 concurrency:
   group: e2e-android-emulator
