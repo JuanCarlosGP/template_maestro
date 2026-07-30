@@ -111,13 +111,16 @@ jobs:
         if: failure()
         env:
           AGENT_API_KEY: ${{ secrets.AGENT_API_KEY }}
+          AGENT_PROVIDER: cursor
           CI_TRIAGE_APPLY: '1'
         run: |
           if [ -z "$AGENT_API_KEY" ]; then
             echo "AGENT_API_KEY secret not set — skip triage"
             exit 0
           fi
-          npm install --no-save @cursor/sdk
+          if [ "$AGENT_PROVIDER" = "cursor" ]; then
+            npm install --no-save @cursor/sdk
+          fi
           node maestro/scripts/ci-triage-failure.js
 
       - name: Upload reports (post-triage)

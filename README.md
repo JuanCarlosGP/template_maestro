@@ -67,7 +67,7 @@ Reglas para agentes: [`AGENTS.md`](AGENTS.md).
 
 **Antes:** emulador o simulador con la app instalada, `.env` configurado, MCP `maestro` en [`.mcp.json`](.mcp.json) (TMS opcional para leer la issue — ver [`mcp-examples.md`](docs/agent/mcp-examples.md)).
 
-En Cursor (Agent chat), escribe `/author-e2e-test` (skills en [`.agents/skills/`](.agents/skills/)) o pega:
+En el chat de agente de tu IDE (p. ej. VS Code + extensión de agentes, u otro IDE compatible), escribe `/author-e2e-test` (skills en [`.agents/skills/`](.agents/skills/)) o pega:
 
 ```
 Automatiza la issue #123 siguiendo docs/agent/author-e2e-test/SKILL.md
@@ -249,7 +249,7 @@ npm run gherkin-extract     # solo regenera JSON/CSV
 
 ---
 
-## Editor (VS Code / Cursor)
+## Editor (VS Code y compatibles)
 
 Los pasos Gherkin se resuelven en **`maestro/step-definitions/*.json`**, no en `.js`/`.ts`. La extensión **Cucumber (oficial)** marca pasos como *Undefined step* aunque `npm run validate` esté en verde.
 
@@ -260,7 +260,7 @@ El workspace incluye [`.vscode/extensions.json`](.vscode/extensions.json):
 | **Cucumber (Gherkin) Syntax and Snippets** | `stevejpurves.cucumber` | Recomendada — resaltado y snippets |
 | **Cucumber (oficial)** | `CucumberOpen.cucumber-official` | No recomendada en este template |
 
-Al abrir el repo, Cursor/VS Code puede sugerir instalar la extensión ligera.
+Al abrir el repo, el IDE puede sugerir instalar la extensión ligera.
 
 **Importante:** si tienes instalada **Cucumber (oficial)** (`CucumberOpen.cucumber-official`), desactívala en este workspace: Extensions → *Cucumber* → **Disable (Workspace)**. El reload solo no la quita; `unwantedRecommendations` no la desinstala.
 

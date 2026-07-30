@@ -1,19 +1,21 @@
 #!/usr/bin/env node
 /**
- * CI failure triage via agent SDK (local on the runner).
+ * CI failure triage via a pluggable agent provider (vendor-neutral).
  * Reads reports/summary.json + Maestro screenshots, writes a short reports/ci-triage.md,
  * and may apply a minimal fix (e.g. stale assertion text). Does not commit.
  *
  * Env:
- *   AGENT_API_KEY   — required (generic name; value is the agent provider key)
- *   REPORT_DIR      — default reports
- *   CI_TRIAGE_APPLY — "1" to allow editing flows/features (default 1 in CI)
+ *   AGENT_API_KEY     — required (provider API key; store as CI secret)
+ *   AGENT_PROVIDER    — optional adapter id (default: cursor — only one wired for now)
+ *   REPORT_DIR        — default reports
+ *   CI_TRIAGE_APPLY   — "1" to allow editing flows/features (default 1 in CI)
  */
 'use strict'
 
 const fs = require('fs')
 const path = require('path')
 const { listScenarioResults } = require('./lib/playwright-report')
+const { loadAgentProvider } = require('./lib/agent-providers')
 
 async function main() {
   const apiKey = process.env.AGENT_API_KEY
@@ -60,6 +62,15 @@ async function main() {
 
   const apply = (process.env.CI_TRIAGE_APPLY || '1') === '1'
   const triageOut = path.join(reportDir, 'ci-triage.md')
+  const providerName = process.env.AGENT_PROVIDER || 'cursor'
+
+  let provider
+  try {
+    provider = loadAgentProvider(providerName)
+  } catch (e) {
+    console.error(e.message || e)
+    process.exit(e.code === 'AGENT_PROVIDER_UNKNOWN' ? 0 : 1)
+  }
 
   const prompt = `Eres el Agente de triage de fallos E2E en CI (Izertis Maestro Template).
 Diagnóstico solo (docs/agent/debug-flow): NO relances emulador ni Maestro.
@@ -98,29 +109,18 @@ ${apply
 
 Al terminar, responde en chat con 2-3 líneas máximo.`
 
-  let Agent
-  let CursorAgentError
-  try {
-    ;({ Agent, CursorAgentError } = require('@cursor/sdk'))
-  } catch {
-    console.error('Install @cursor/sdk in this job before running triage (npm install @cursor/sdk)')
-    process.exit(1)
-  }
-
-  console.log(`Triaging ${failed.length} failed scenario(s); screenshots=${screenshots.length}; apply=${apply}`)
+  console.log(
+    `Triaging ${failed.length} failed scenario(s); provider=${provider.id}; screenshots=${screenshots.length}; apply=${apply}`,
+  )
 
   try {
-    const result = await Agent.prompt(prompt, {
-      apiKey,
-      model: { id: 'composer-2.5' },
-      local: { cwd: process.cwd() },
-    })
+    const result = await provider.prompt(prompt, { apiKey, cwd: process.cwd() })
     console.log('agent status:', result.status)
     if (result.result) console.log(String(result.result).slice(0, 1500))
     if (result.status === 'error') process.exit(2)
   } catch (err) {
-    if (err instanceof CursorAgentError) {
-      console.error('Agent startup/run error:', err.message, 'retryable=', err.isRetryable)
+    if (err.code === 'AGENT_PROVIDER_ERROR' || err.code === 'AGENT_SDK_MISSING') {
+      console.error('Agent provider error:', err.message, 'retryable=', err.isRetryable)
       process.exit(1)
     }
     throw err

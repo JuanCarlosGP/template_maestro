@@ -51,9 +51,9 @@ Ships **only `maestro`** so the IDE opens cleanly. Add one TMS block when automa
 
 ## Use with your IDE
 
-### Cursor slash commands
+### IDE slash / agent commands
 
-Skills are wired under [`.agents/skills/`](../../.agents/skills/) (thin wrappers → playbooks here). In Agent chat type `/` and pick:
+Skills are wired under [`.agents/skills/`](../../.agents/skills/) (thin wrappers → playbooks here). In your IDE agent chat type `/` and pick:
 
 | Command | Playbook |
 |---------|----------|
