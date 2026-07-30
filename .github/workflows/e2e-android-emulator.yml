@@ -110,3 +110,27 @@ jobs:
           path: reports/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: AI triage on failure (Cursor)
+        if: failure()
+        env:
+          CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+          CI_TRIAGE_APPLY: '1'
+        run: |
+          if [ -z "$CURSOR_API_KEY" ]; then
+            echo "CURSOR_API_KEY secret not set — skip AI triage"
+            exit 0
+          fi
+          npm install --no-save @cursor/sdk
+          node maestro/scripts/ci-triage-failure.js
+          # Re-upload reports if triage.md / fixes landed under reports/
+          echo "Triage done. See reports/ci-triage.md in the artifact (re-upload below if present)."
+
+      - name: Upload reports (post-triage)
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-reports-triage-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14
