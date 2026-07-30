@@ -1,0 +1,98 @@
+# Nightly (and manual) Android E2E on a GitHub-hosted emulator.
+# Boots AVD, installs Sauce Labs My Demo App APK, runs maestro/features.
+# Expect flakiness vs local/cloud devices — especially About (external Chrome/site).
+
+name: E2E Android emulator
+
+on:
+  schedule:
+    # 03:00 UTC daily
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-android-emulator
+  cancel-in-progress: true
+
+jobs:
+  android-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      ANDROID_APP_ID: com.saucelabs.mydemoapp.android
+      # Pin APK; bump when Sauce Labs publishes a new demo release.
+      DEMO_APK_URL: https://github.com/saucelabs/my-demo-app-android/releases/download/2.2.0/mda-2.2.0-25.apk
+      MAESTRO_VERSION: '2.6.0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          maestro --version
+
+      - name: Download My Demo App APK
+        run: |
+          mkdir -p build/android
+          curl -fsSL -o build/android/demo.apk "$DEMO_APK_URL"
+          ls -lh build/android/demo.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+
+      - name: Run E2E on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: true
+          disable-animations: true
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            set -euo pipefail
+            adb wait-for-device
+            adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done'
+            adb install -r build/android/demo.apk
+            adb devices -l
+            npm run feature -- \
+              --feature-dir maestro/features \
+              --platform android \
+              --android-app-id "$ANDROID_APP_ID" \
+              --no-publish
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-reports-${{ github.run_id }}
+          path: |
+            reports/junit.xml
+            reports/summary.json
+            reports/index.html
+          if-no-files-found: warn
+          retention-days: 14

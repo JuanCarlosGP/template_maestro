@@ -25,7 +25,18 @@ Run on a macOS/Linux agent with a booted simulator/emulator and the app installe
 
 ```bash
 npm run feature -- --feature maestro/features/<Area>.feature --platform android --no-publish
+# or all features:
+npm run feature -- --feature-dir maestro/features --platform android --no-publish
 ```
+
+### GitHub Actions — hosted Android emulator
+
+Without BrowserStack, you can boot an AVD on `ubuntu-latest` (KVM + [`reactivecircus/android-emulator-runner`](https://github.com/ReactiveCircus/android-emulator-runner)), install the APK, and run the Gherkin suite.
+
+- Live workflow: [`.github/workflows/e2e-android-emulator.yml`](../.github/workflows/e2e-android-emulator.yml) (`cron` nightly + manual `workflow_dispatch`)
+- Copyable example: [`integrations/github-actions/android-emulator.yml`](../integrations/github-actions/android-emulator.yml)
+
+Expect longer jobs and more flakiness than a local emulator or a device farm (especially scenarios that open an external browser / live website). Prefer self-hosted or cloud devices for critical gates.
 
 Publish execution artifacts from the run (see below).
 
@@ -61,7 +72,8 @@ Configure in `.env` only if the client uses them:
 
 | Stack | Example file |
 |-------|----------------|
-| GitHub Actions | [`integrations/github-actions/headless.yml`](../integrations/github-actions/headless.yml) |
+| GitHub Actions (headless) | [`integrations/github-actions/headless.yml`](../integrations/github-actions/headless.yml) |
+| GitHub Actions (Android emulator) | [`integrations/github-actions/android-emulator.yml`](../integrations/github-actions/android-emulator.yml) |
 | Azure Pipelines | [`integrations/azure-pipelines/headless.yml`](../integrations/azure-pipelines/headless.yml) |
 | GitLab CI | [`integrations/gitlab-ci/headless.yml`](../integrations/gitlab-ci/headless.yml) |
 
